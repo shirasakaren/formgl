@@ -1,0 +1,29 @@
+{
+  "name": "formgl",
+  "private": true,
+  "version": "0.1.0",
+  "description": "FormGL — immersive 3D interactive forms. Next.js + NestJS monorepo.",
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "dev:web": "pnpm --filter @formgl/web dev",
+    "dev:api": "pnpm --filter @formgl/api dev",
+    "db:generate": "pnpm --filter @formgl/api db:generate",
+    "db:migrate": "pnpm --filter @formgl/api db:migrate",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down"
+  },
+  "devDependencies": {
+    "turbo": "^2.11.4",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "sharp", "@nestjs/core", "unrs-resolver"]
+  }
+}
