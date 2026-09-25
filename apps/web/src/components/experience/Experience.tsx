@@ -10,7 +10,8 @@ import { Controls } from './Controls';
 import { LetterOverlay } from './letter/LetterOverlay';
 import { ThankYou } from './letter/ThankYou';
 import { Fallback } from './Fallback';
-import { playIntro, playOpen, playSend, killTimeline } from './timeline';
+import { killTimeline } from './timeline';
+import { envConfig } from './envs';
 import { sfx } from './audio';
 import { progressStore, track } from '@/lib/public/client';
 import './experience.css';
@@ -127,7 +128,7 @@ export function Experience({ form, demo = false, preview = false }: { form: Publ
   /* ── first gesture starts audio ── */
   useEffect(() => {
     const start = () => {
-      sfx.startAmbience({ wind: form.theme.wind, musicUrl: form.theme.musicUrl });
+      sfx.startAmbience({ wind: form.theme.wind, musicUrl: form.theme.musicUrl, ambience: envConfig(form.theme.environment).ambience });
       window.removeEventListener('pointerdown', start);
       window.removeEventListener('keydown', start);
     };
@@ -173,7 +174,7 @@ export function Experience({ form, demo = false, preview = false }: { form: Publ
       const t = setTimeout(() => {
         set({ phase: 'revealing' });
         setRevealRun(true);
-        if (webgl) playIntro(reduced);
+        if (webgl) envConfig(form.theme.environment).intro(reduced);
       }, 350);
       return () => clearTimeout(t);
     }
@@ -191,14 +192,14 @@ export function Experience({ form, demo = false, preview = false }: { form: Publ
     if (opened.current || (s.phase !== 'idle' && s.phase !== 'revealing')) return;
     if (s.form?.availability !== 'open' && !s.preview) return;
     opened.current = true;
-    sfx.startAmbience({ wind: form.theme.wind, musicUrl: form.theme.musicUrl });
+    sfx.startAmbience({ wind: form.theme.wind, musicUrl: form.theme.musicUrl, ambience: envConfig(form.theme.environment).ambience });
     set({ phase: 'opening' });
     track(form.slug, 'open', {}, demo || preview);
     if (!s.webgl) {
       set({ phase: 'reading' });
       return;
     }
-    playOpen(s.reducedMotion, () => set({ phase: 'reading' }));
+    envConfig(form.theme.environment).open(s.reducedMotion, () => set({ phase: 'reading' }));
   }, [set, form, demo, preview]);
 
   /* ── send ── */
@@ -211,7 +212,7 @@ export function Experience({ form, demo = false, preview = false }: { form: Publ
       setTimeout(() => set({ phase: 'sent' }), 900);
       return;
     }
-    playSend(s.reducedMotion, () => {
+    envConfig(form.theme.environment).send(s.reducedMotion, () => {
       set({ phase: 'sent' });
       sfx.chime();
     });

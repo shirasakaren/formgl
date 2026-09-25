@@ -178,6 +178,7 @@ export function createField(type: FieldType, overrides: Partial<FormField> = {})
 }
 
 export const DEFAULT_THEME: FormTheme = {
+  environment: 'park',
   timeOfDay: 'golden',
   loaderColor: '#f3e9dc',
   loaderStyle: 'mixed',
@@ -195,7 +196,7 @@ export const DEFAULT_THEME: FormTheme = {
   bodyFont: 'elegant',
   labelFont: 'elegant',
   envelopeSubtitle: 'a letter, for you',
-  openHint: 'Tap to open',
+  openHint: '',
   ambientSound: true,
   dust: true,
   fallingLeaves: true,
@@ -250,4 +251,66 @@ export function withThemeDefaults(theme?: Partial<FormTheme> | null): FormTheme 
 
 export function withSettingsDefaults(settings?: Partial<FormSettings> | null): FormSettings {
   return { ...DEFAULT_SETTINGS, ...(settings ?? {}) };
+}
+
+export interface EnvironmentMeta {
+  key: import('./types').EnvironmentKey;
+  label: string;
+  tagline: string;
+  description: string;
+  /** what holds the letter */
+  vessel: string;
+  /** default hint on the vessel */
+  hint: string;
+  /** suggested colours when switching to this world */
+  suggest: { loaderColor: string; envelopeColor: string; sealColor: string; paperColor: string; accentColor: string };
+  /** css gradient used for previews in the dashboard */
+  preview: string;
+}
+
+export const ENVIRONMENTS: EnvironmentMeta[] = [
+  {
+    key: 'park',
+    label: 'The Park Bench',
+    tagline: 'A sealed envelope under the old tree',
+    description: 'Sunlight falls through swaying leaves onto a wooden bench. The wax seal cracks, the flap curls open and the letter unfolds in the light. Sent replies fly off into the trees.',
+    vessel: 'Wax-sealed envelope',
+    hint: 'Tap the seal to open',
+    suggest: { loaderColor: '#f3e9dc', envelopeColor: '#efe6d6', sealColor: '#8e1b1b', paperColor: '#fbf7ef', accentColor: '#8e1b1b' },
+    preview: 'linear-gradient(160deg,#e9dcc0 0%,#9fae6a 55%,#6e7f3f 100%)',
+  },
+  {
+    key: 'seaside',
+    label: 'Message in a Bottle',
+    tagline: 'Washed ashore at the waterline',
+    description: 'A corked glass bottle rests in wet sand as waves hush in and out. A wave nudges it closer, the cork pops, and a rolled scroll slides out and unrolls. Replies are corked and drift out to sea.',
+    vessel: 'Glass bottle with a rolled scroll',
+    hint: 'Tap the bottle',
+    suggest: { loaderColor: '#e6f0ef', envelopeColor: '#f3ecdf', sealColor: '#2f6f73', paperColor: '#f8f3e8', accentColor: '#2f6f73' },
+    preview: 'linear-gradient(180deg,#cfe6ee 0%,#8cc4cf 45%,#e9dcc2 70%,#d8c49f 100%)',
+  },
+  {
+    key: 'atelier',
+    label: 'The Writing Desk',
+    tagline: 'A ribboned letter by a sunlit window',
+    description: 'Sheer curtains breathe in the breeze over an old writing desk with ink, quill, books and steaming tea. The silk ribbon unties itself and the letter opens. Replies fold into a paper plane and glide out of the window.',
+    vessel: 'Folded letter tied with a silk ribbon',
+    hint: 'Untie the ribbon',
+    suggest: { loaderColor: '#f4ece2', envelopeColor: '#f1e7d8', sealColor: '#6b2d3a', paperColor: '#fbf6ee', accentColor: '#7a3b46' },
+    preview: 'linear-gradient(160deg,#fff7e8 0%,#e9d6ba 45%,#8a6443 100%)',
+  },
+  {
+    key: 'skies',
+    label: 'Above the Clouds',
+    tagline: 'Carried up by a bunch of balloons',
+    description: 'You drift in a hot-air balloon basket over a sea of pastel clouds. A bunch of balloons floats up carrying a rolled letter; let them go to read it. Replies are tied to a fresh balloon and float away toward the sun.',
+    vessel: 'Scroll tied to balloons',
+    hint: 'Catch the balloons',
+    suggest: { loaderColor: '#f4e9f0', envelopeColor: '#f6eef2', sealColor: '#c2577a', paperColor: '#fdf8fa', accentColor: '#b84f76' },
+    preview: 'linear-gradient(180deg,#f7d9e3 0%,#e7dcf3 40%,#fdf2e6 75%,#ffffff 100%)',
+  },
+];
+
+export function environmentMeta(key?: string): EnvironmentMeta {
+  return ENVIRONMENTS.find((e) => e.key === key) ?? ENVIRONMENTS[0];
 }

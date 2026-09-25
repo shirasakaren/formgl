@@ -114,8 +114,27 @@ export function Envelope({ assets, sealColor, onOpen }: { assets: SceneAssets; s
 
   useEffect(() => {
     sceneRefs.envelope = group.current;
+    // the letter lives inside the envelope until it slides out of the top
+    const m = new THREE.Matrix4();
+    const local = new THREE.Matrix4();
+    const e = new THREE.Euler();
+    const q = new THREE.Quaternion();
+    const p = new THREE.Vector3();
+    const sc = new THREE.Vector3();
+    sceneRefs.letterSource = (out) => {
+      const env = group.current;
+      if (!env) return;
+      env.updateMatrixWorld();
+      const s = anim.slide;
+      e.set(-Math.PI / 2 + s * 0.55, 0, Math.sin(s * Math.PI) * 0.03);
+      q.setFromEuler(e);
+      local.compose(p.set(0, 0.0016 + 0.006 * s + 0.07 * s * s, -0.074 - 0.11 * s - 0.02 * s * s), q, sc.set(1, 1, 1));
+      m.multiplyMatrices(env.matrixWorld, local);
+      m.decompose(out.p, out.q, sc);
+    };
     return () => {
       sceneRefs.envelope = null;
+      sceneRefs.letterSource = null;
     };
   }, []);
 

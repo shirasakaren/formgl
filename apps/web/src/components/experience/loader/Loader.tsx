@@ -3,16 +3,10 @@ import { useEffect, useState } from 'react';
 import type { LoaderStyle } from '@formgl/shared';
 import { useExperience } from '../store';
 
-const VIGNETTES = ['ink', 'stamp', 'plane', 'leaves', 'envelope', 'dandelion'] as const;
-type Vignette = (typeof VIGNETTES)[number];
+import { envConfig, type VignetteKey } from '../envs';
+import { Balloon, Bottle, Candle, Clock, Clouds, Gull, HotAir, Kite, Lighthouse, Shell, Sunrise, Teacup, Typewriter, Waves } from './vignettes2';
 
-const QUOTES = [
-  'Some words are worth the wait.',
-  'Good letters take a moment.',
-  'Slow down. Something kind is coming.',
-  'Written by hand, delivered by light.',
-  'Listen — the leaves are whispering.',
-];
+type Vignette = VignetteKey;
 
 function Ink({ ink }: { ink: string }) {
   return (
@@ -113,18 +107,21 @@ export function Loader({ hidden }: { hidden: boolean }) {
   const label = useExperience((s) => s.progressLabel);
   const reduced = useExperience((s) => s.reducedMotion);
   const theme = form?.theme;
+  const env = envConfig(theme?.environment);
+  const VIGNETTES = env.vignettes;
   const style: LoaderStyle = theme?.loaderStyle ?? 'mixed';
   const [idx, setIdx] = useState(0);
-  const [quote, setQuote] = useState(QUOTES[0]);
-  useEffect(() => setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]), []);
+  const [quote, setQuote] = useState(env.quotes[0]);
+  useEffect(() => setQuote(env.quotes[Math.floor(Math.random() * env.quotes.length)]), [env]);
 
   useEffect(() => {
     if (style !== 'mixed' || reduced) return;
     const t = setInterval(() => setIdx((i) => (i + 1) % VIGNETTES.length), 2600);
     return () => clearInterval(t);
-  }, [style, reduced]);
+  }, [style, reduced, VIGNETTES.length]);
 
-  const active: Vignette = style === 'mixed' || style === 'minimal' ? VIGNETTES[idx] : (style as Vignette);
+  // a specific loader style shows that vignette only when it belongs to this world
+  const active: Vignette = style === 'mixed' || style === 'minimal' || !VIGNETTES.includes(style as Vignette) ? VIGNETTES[idx] : (style as Vignette);
   const ink = theme?.inkColor ?? '#2b2320';
   const accent = theme?.sealColor ?? '#8e1b1b';
   const pct = Math.round(progress * 100);
@@ -141,6 +138,20 @@ export function Loader({ hidden }: { hidden: boolean }) {
               {v === 'leaves' && <Leaves ink={ink} />}
               {v === 'envelope' && <EnvelopeV ink={ink} accent={accent} />}
               {v === 'dandelion' && <Dandelion ink={ink} />}
+              {v === 'waves' && <Waves ink={ink} accent={accent} />}
+              {v === 'bottle' && <Bottle ink={ink} accent={accent} />}
+              {v === 'shell' && <Shell ink={ink} accent={accent} />}
+              {v === 'gull' && <Gull ink={ink} accent={accent} />}
+              {v === 'lighthouse' && <Lighthouse ink={ink} accent={accent} />}
+              {v === 'sunrise' && <Sunrise ink={ink} accent={accent} />}
+              {v === 'typewriter' && <Typewriter ink={ink} accent={accent} />}
+              {v === 'candle' && <Candle ink={ink} accent={accent} />}
+              {v === 'teacup' && <Teacup ink={ink} accent={accent} />}
+              {v === 'clock' && <Clock ink={ink} accent={accent} />}
+              {v === 'balloon' && <Balloon ink={ink} accent={accent} />}
+              {v === 'clouds' && <Clouds ink={ink} accent={accent} />}
+              {v === 'hotair' && <HotAir ink={ink} accent={accent} />}
+              {v === 'kite' && <Kite ink={ink} accent={accent} />}
             </div>
           ))}
       </div>

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { seedSprite, toTexture } from './textures';
+import { seedSprite, softDot, toTexture } from './textures';
 import { hexToRgb } from './noise';
 
 /*
@@ -16,7 +16,7 @@ import { hexToRgb } from './noise';
  */
 
 const FIELD = /* glsl */ `
-  uniform vec2 uRes; uniform vec2 uCenter;
+  uniform vec2 uRes; uniform vec2 uCenter; uniform float uTime;
   float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float vnoise(vec2 p) {
     vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -26,15 +26,36 @@ const FIELD = /* glsl */ `
   // 0 → dissolves first, 1 → last
   float field(vec2 px) {
     vec2 uv = px / uRes;
-    vec2 d = (uv - uCenter) * vec2(uRes.x / uRes.y, 1.0);
-    float r = length(d) / length(vec2(uRes.x / uRes.y, 1.0));
-    float n = fbm(uv * vec2(uRes.x / uRes.y, 1.0) * 3.2);
-    // wind blows from the left: the left side starts a touch earlier
-    return clamp(r * 0.62 + n * 0.42 - uv.x * 0.08, 0.0, 1.0);
+    float asp = uRes.x / uRes.y;
+    #if MODE == 1
+      // tide: the colour drains downward like a wave pulling back, with a ragged foamy line
+      float w = sin(uv.x * 7.0 + 1.3) * 0.035 + sin(uv.x * 17.0 - 0.4) * 0.015;
+      return clamp((1.0 - uv.y) * 0.86 + w + (fbm(uv * vec2(asp * 3.0, 2.0)) - 0.5) * 0.16, 0.0, 1.0);
+    #elif MODE == 2
+      // curtains: part from the middle outward, the leading edges swaying
+      float sway = sin(uv.y * 5.0 + 0.8) * 0.03 + sin(uv.y * 13.0) * 0.012;
+      return clamp(abs(uv.x - 0.5 + sway) * 2.0 * 0.94 + (fbm(uv * vec2(1.0, 6.0)) - 0.5) * 0.06, 0.0, 1.0);
+    #elif MODE == 3
+      // clouds: billowing puffs clear from the centre as we fly through
+      vec2 d = (uv - uCenter) * vec2(asp, 1.0);
+      float r = length(d) / length(vec2(asp, 1.0));
+      float b = fbm(uv * vec2(asp, 1.0) * 2.2);
+      float billow = 1.0 - abs(b * 2.0 - 1.0);
+      return clamp(r * 0.5 + billow * 0.55 + (b - 0.5) * 0.2, 0.0, 1.0);
+    #else
+      vec2 d = (uv - uCenter) * vec2(asp, 1.0);
+      float r = length(d) / length(vec2(asp, 1.0));
+      float n = fbm(uv * vec2(asp, 1.0) * 3.2);
+      // wind blows from the left: the left side starts a touch earlier
+      return clamp(r * 0.62 + n * 0.42 - uv.x * 0.08, 0.0, 1.0);
+    #endif
   }
 `;
 
+const MODES = { dandelion: 0, tide: 1, curtain: 2, clouds: 3 } as const;
+
 export interface RevealProps {
+  mode?: keyof typeof MODES;
   color: string;
   /** false: the sheet stays fully opaque (covering the scene) */
   run: boolean;
@@ -46,7 +67,7 @@ export interface RevealProps {
   onDone: () => void;
 }
 
-export function RevealPass({ color, run, done: finished = false, reduced, renderScene, onDone }: RevealProps) {
+export function RevealPass({ mode = 'dandelion', color, run, done: finished = false, reduced, renderScene, onDone }: RevealProps) {
   const { size } = useThree();
   const done = useRef(onDone);
   done.current = onDone;
@@ -79,16 +100,47 @@ export function RevealPass({ color, run, done: finished = false, reduced, render
         vertexShader: /* glsl */ `
           varying vec2 vPx; uniform vec2 uRes;
           void main() { vPx = position.xy + 0.5 * uRes; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+        defines: { MODE: MODES[mode] },
         fragmentShader: /* glsl */ `
           ${FIELD}
           uniform float uP; uniform vec3 uColor; varying vec2 vPx;
           void main() {
             float th = field(vPx);
-            float fibre = (vnoise(vPx * 0.09) - 0.5) * 0.06 + (vnoise(vPx * 0.3) - 0.5) * 0.025;
-            float a = smoothstep(uP - 0.02, uP + 0.03, th + fibre);
-            // soft light rim on the tearing edge
-            float rim = smoothstep(0.05, 0.0, abs(th + fibre - uP)) * 0.14 * step(0.0, uP);
-            gl_FragColor = vec4(min(uColor + rim, vec3(1.0)), a);
+            vec2 uv = vPx / uRes;
+            vec3 col = uColor;
+            float a;
+            #if MODE == 1
+              float fibre = (vnoise(vPx * 0.05 + vec2(uTime * 0.6, 0.0)) - 0.5) * 0.05;
+              float d = th + fibre - uP;
+              a = smoothstep(-0.015, 0.05, d);
+              // lacy foam riding the edge, a darker wet band just behind it
+              float lace = smoothstep(0.35, 0.8, vnoise(vPx * 0.09 + vec2(0.0, uTime)) * vnoise(vPx * 0.23 - uTime * 0.5) * 2.0);
+              float band = smoothstep(0.07, 0.0, abs(d - 0.012));
+              col = mix(col * 0.97, vec3(1.0), band * (0.55 + 0.45 * lace));
+              a = max(a, band * lace * 0.9 * step(0.0, uP));
+            #elif MODE == 2
+              float d = th - uP;
+              a = smoothstep(-0.01, 0.03, d);
+              // gathered sheer folds that bunch toward the leading edge
+              float folds = sin((uv.x * 70.0) + d * 40.0) * 0.5 + 0.5;
+              col *= 0.93 + 0.1 * folds;
+              // translucent sheer near the edge, a stitched hem
+              a *= mix(0.62, 1.0, smoothstep(0.0, 0.18, d));
+              float hem = smoothstep(0.02, 0.0, abs(d - 0.006));
+              col = mix(col, col * 0.86, hem * 0.6);
+            #elif MODE == 3
+              float d = th - uP;
+              a = smoothstep(-0.05, 0.09, d);
+              // sunlit rims on the cloud edges
+              float rim = smoothstep(0.1, 0.0, abs(d)) * step(0.0, uP);
+              col = min(col + rim * 0.12, vec3(1.0));
+            #else
+              float fibre = (vnoise(vPx * 0.09) - 0.5) * 0.06 + (vnoise(vPx * 0.3) - 0.5) * 0.025;
+              a = smoothstep(uP - 0.02, uP + 0.03, th + fibre);
+              float rim = smoothstep(0.05, 0.0, abs(th + fibre - uP)) * 0.14 * step(0.0, uP);
+              col = min(uColor + rim, vec3(1.0));
+            #endif
+            gl_FragColor = vec4(col, a);
           }`,
       }),
     );
@@ -96,7 +148,8 @@ export function RevealPass({ color, run, done: finished = false, reduced, render
     sheet.frustumCulled = false;
     scene.add(sheet);
 
-    const spacing = Math.max(16, Math.min(30, Math.sqrt((w * h) / 2600)));
+    const density = mode === 'clouds' ? 260 : mode === 'curtain' ? 900 : mode === 'tide' ? 1800 : 2600;
+    const spacing = Math.max(16, Math.sqrt((w * h) / density));
     const cols = Math.ceil(w / spacing) + 1;
     const rows = Math.ceil(h / spacing) + 1;
     const count = cols * rows;
@@ -108,7 +161,8 @@ export function RevealPass({ color, run, done: finished = false, reduced, render
         origin[k * 2] = x * spacing + (Math.random() - 0.5) * spacing;
         origin[k * 2 + 1] = y * spacing + (Math.random() - 0.5) * spacing;
         data[k * 4] = Math.random() * 6.283;
-        data[k * 4 + 1] = spacing * (1.1 + Math.random() * 0.9);
+        data[k * 4 + 1] =
+          mode === 'clouds' ? spacing * (1.6 + Math.random() * 1.6) : mode === 'curtain' ? 3 + Math.random() * 5 : mode === 'tide' ? 4 + Math.random() * 9 : spacing * (1.1 + Math.random() * 0.9);
         data[k * 4 + 2] = 0.7 + Math.random() * 0.7;
         data[k * 4 + 3] = (Math.random() - 0.5) * 0.12;
         k++;
@@ -121,18 +175,19 @@ export function RevealPass({ color, run, done: finished = false, reduced, render
     geo.setAttribute('aOrigin', new THREE.InstancedBufferAttribute(origin, 2));
     geo.setAttribute('aData', new THREE.InstancedBufferAttribute(data, 4));
     geo.instanceCount = count;
-    const tex = toTexture(seedSprite(128));
+    const tex = toTexture(mode === 'dandelion' ? seedSprite(128) : softDot(64));
     const seeds = new THREE.Mesh(
       geo,
       new THREE.ShaderMaterial({
         transparent: true,
         depthTest: false,
         depthWrite: false,
+        defines: { MODE: MODES[mode] },
         uniforms: { ...uniforms, uMap: { value: tex } },
         vertexShader: /* glsl */ `
           ${FIELD}
           attribute vec2 aOrigin; attribute vec4 aData;
-          uniform float uP; uniform float uTime;
+          uniform float uP;
           varying vec2 vUv; varying float vA; varying float vShade;
           void main() {
             vUv = uv;
@@ -140,11 +195,34 @@ export function RevealPass({ color, run, done: finished = false, reduced, render
             float age = (uP - th) * 2.6 * aData.z;
             vA = smoothstep(-0.03, 0.02, age) * (1.0 - smoothstep(0.55, 1.05, age));
             float a = max(age, 0.0);
-            vec2 wind = vec2(0.95, 0.62) * uRes.y;
-            vec2 p = aOrigin + wind * pow(a, 1.35) * 0.55;
-            p += vec2(sin(a * 5.0 + aData.x) * 40.0, cos(a * 3.7 + aData.x * 1.3) * 26.0) * a;
-            float rot = aData.x + a * 2.4 + sin(uTime * 2.0 + aData.x) * 0.2 * a;
-            float s = aData.y * (1.0 + a * 0.5);
+            vec2 p;
+            float rot;
+            float s = aData.y;
+            #if MODE == 1
+              // foam flecks and bubbles left behind by the retreating water
+              p = aOrigin + vec2(sin(a * 3.0 + aData.x) * 14.0, -pow(a, 1.2) * uRes.y * 0.22);
+              rot = 0.0;
+              s *= 1.0 - a * 0.4;
+              vA *= 0.9;
+            #elif MODE == 2
+              // dust motes glinting in the light as the curtains part
+              p = aOrigin + vec2(sin(a * 2.0 + aData.x) * 20.0 * a, a * uRes.y * 0.08);
+              rot = 0.0;
+              vA *= 0.55 + 0.45 * sin(uTime * 4.0 + aData.x * 9.0);
+            #elif MODE == 3
+              // cloud puffs rushing past as we fly through them
+              vec2 dir = normalize(aOrigin - uCenter * uRes + vec2(0.001));
+              p = aOrigin + dir * pow(a, 1.4) * uRes.y * 0.9;
+              rot = aData.x;
+              s *= 1.0 + a * 2.2;
+              vA *= 0.7;
+            #else
+              vec2 wind = vec2(0.95, 0.62) * uRes.y;
+              p = aOrigin + wind * pow(a, 1.35) * 0.55;
+              p += vec2(sin(a * 5.0 + aData.x) * 40.0, cos(a * 3.7 + aData.x * 1.3) * 26.0) * a;
+              rot = aData.x + a * 2.4 + sin(uTime * 2.0 + aData.x) * 0.2 * a;
+              s *= 1.0 + a * 0.5;
+            #endif
             vec2 c = position.xy * s;
             c = mat2(cos(rot), -sin(rot), sin(rot), cos(rot)) * c;
             vShade = aData.w;
@@ -157,6 +235,9 @@ export function RevealPass({ color, run, done: finished = false, reduced, render
             vec4 t = texture2D(uMap, vUv);
             // seeds carry the colour, slightly lighter so they read against the park
             vec3 c = min(uColor * (1.0 + vShade) + 0.07, vec3(1.0));
+            #if MODE == 1 || MODE == 2
+              c = vec3(1.0);
+            #endif
             gl_FragColor = vec4(c, t.a * vA * uSeeds);
           }`,
       }),
@@ -164,7 +245,7 @@ export function RevealPass({ color, run, done: finished = false, reduced, render
     seeds.frustumCulled = false;
     scene.add(seeds);
     return { scene, cam, uniforms, geo, tex };
-  }, [size.width, size.height, color, reduced]);
+  }, [size.width, size.height, color, reduced, mode]);
 
   useEffect(
     () => () => {

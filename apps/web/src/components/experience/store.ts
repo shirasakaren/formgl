@@ -87,6 +87,8 @@ export const anim = {
   focusLetter: 0,
   /** global time multiplier for wind */
   wind: 0.45,
+  /** environment specific channels (cork, wave, ribbon, balloons…) */
+  fx: {} as Record<string, number>,
   /** pointer in NDC (-1..1) smoothed */
   px: 0,
   py: 0,
@@ -112,4 +114,5 @@ export function resetAnim() {
     letterVisible: 1,
     focusLetter: 0,
   });
+  for (const k of Object.keys(anim.fx)) anim.fx[k] = 0;
 }

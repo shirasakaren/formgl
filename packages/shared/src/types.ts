@@ -201,6 +201,8 @@ export type Answers = Record<string, AnswerValue>;
 /* ───────────────────────── Theme ───────────────────────── */
 
 export type TimeOfDay = 'morning' | 'noon' | 'golden' | 'dusk' | 'overcast';
+/** the 3D world the letter arrives in */
+export type EnvironmentKey = 'park' | 'seaside' | 'atelier' | 'skies';
 export type FontKey =
   | 'script'
   | 'elegant'
@@ -217,6 +219,7 @@ export type PageTransition = 'flip' | 'slide' | 'fold' | 'stack' | 'fade';
 export type LoaderStyle = 'mixed' | 'ink' | 'stamp' | 'plane' | 'leaves' | 'minimal';
 
 export interface FormTheme {
+  environment: EnvironmentKey;
   timeOfDay: TimeOfDay;
   /** solid color of the loading screen — it dissolves into dandelion seeds */
   loaderColor: string;

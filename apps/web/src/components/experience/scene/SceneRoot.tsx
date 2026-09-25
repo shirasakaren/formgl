@@ -1,22 +1,15 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { PerformanceMonitor } from '@react-three/drei';
 import * as THREE from 'three';
-import type { PublicForm } from '@formgl/shared';
+import type { EnvironmentKey, PublicForm } from '@formgl/shared';
+import { envConfig } from '../envs';
 import { anim, useExperience, type Quality } from '../store';
 import { buildAssets, type SceneAssets } from './assets';
-import { Background } from './Background';
-import { Bench } from './Bench';
 import { CameraRig } from './CameraRig';
-import { Effects } from './Effects';
-import { Envelope } from './Envelope';
-import { Ground, WindClock } from './Ground';
+import { WindClock } from './Ground';
 import { Letter3D } from './Letter3D';
-import { Lighting } from './Lighting';
-import { Dandelions, ForegroundBranch, HeroTree } from './Nature';
-import { Butterflies, Dust, FallingLeaves, FloatingSeeds, LightShafts } from './Particles';
-import { PRESETS } from './presets';
 import { RevealPass } from './RevealPass';
 
 function ReadySignal({ onReady }: { onReady: () => void }) {
@@ -56,32 +49,27 @@ function Throttle({ active }: { active: boolean }) {
   return null;
 }
 
-function World({ form, assets, quality, onOpen }: { form: PublicForm; assets: SceneAssets; quality: Quality; onOpen: () => void }) {
-  const t = form.theme;
-  const preset = PRESETS[t.timeOfDay] ?? PRESETS.golden;
+type WorldProps = { form: PublicForm; assets: SceneAssets; quality: Quality; onOpen: () => void };
+// each world is its own chunk: only the chosen environment's code is downloaded
+const WORLDS: Record<EnvironmentKey, React.LazyExoticComponent<(p: WorldProps) => React.ReactNode>> = {
+  park: lazy(() => import('./envs/park/World')),
+  seaside: lazy(() => import('./envs/seaside/World')),
+  atelier: lazy(() => import('./envs/atelier/World')),
+  skies: lazy(() => import('./envs/skies/World')),
+};
+
+function World(props: WorldProps) {
+  const t = props.form.theme;
   const reduced = useExperience((s) => s.reducedMotion);
+  const key = (t.environment && WORLDS[t.environment] ? t.environment : 'park') as EnvironmentKey;
+  const Env = WORLDS[key];
+  const cfg = envConfig(key);
   return (
     <>
-      <color attach="background" args={[preset.skyHorizon]} />
-      <fogExp2 attach="fog" args={[preset.fog, preset.fogDensity]} />
       <WindClock />
       <CameraRig sway={t.cameraSway} reducedMotion={reduced} />
-      <Lighting preset={preset} assets={assets} quality={quality} />
-      <Background preset={preset} assets={assets} quality={quality} />
-      <Ground assets={assets} preset={preset} quality={quality} />
-      <HeroTree assets={assets} />
-      <Bench assets={assets} />
-      <Envelope assets={assets} sealColor={t.sealColor} onOpen={onOpen} />
-      <Letter3D assets={assets} />
-      <Dandelions assets={assets} quality={quality} />
-      {quality !== 'low' && <ForegroundBranch assets={assets} />}
-      {t.dust && !reduced && <Dust assets={assets} preset={preset} quality={quality} />}
-      {t.fallingLeaves && !reduced && <FallingLeaves assets={assets} quality={quality} />}
-      {t.petals && !reduced && <FallingLeaves assets={assets} petals count={26} quality={quality} />}
-      {!reduced && <FloatingSeeds assets={assets} quality={quality} />}
-      {t.butterflies && !reduced && quality !== 'low' && <Butterflies assets={assets} />}
-      {t.timeOfDay !== 'overcast' && quality !== 'low' && <LightShafts preset={preset} />}
-      <Effects preset={preset} quality={quality} />
+      <Env {...props} />
+      <Letter3D assets={props.assets} style={cfg.letterStyle} ribbonColor={t.accentColor} />
     </>
   );
 }
@@ -170,9 +158,11 @@ export default function SceneRoot({ onReady, onOpen, reveal }: { onReady: () => 
       <PerformanceMonitor onDecline={lowerQuality} flipflops={3} onFallback={() => set({ quality: 'low' })}>
         {assets && (
           <>
-            <World form={form} assets={assets} quality={quality} onOpen={onOpen} />
-            <ReadySignal onReady={onReady} />
-            <RevealPass color={reveal.color} run={reveal.run} done={reveal.done} reduced={reduced} renderScene={quality === 'low'} onDone={reveal.onDone} />
+            <Suspense fallback={null}>
+              <World form={form} assets={assets} quality={quality} onOpen={onOpen} />
+              <ReadySignal onReady={onReady} />
+            </Suspense>
+            <RevealPass mode={envConfig(form.theme.environment).revealMode} color={reveal.color} run={reveal.run} done={reveal.done} reduced={reduced} renderScene={quality === 'low'} onDone={reveal.onDone} />
           </>
         )}
       </PerformanceMonitor>

@@ -8,7 +8,12 @@ let current: gsap.core.Timeline | null = null;
 // QA mode (?fgl=…): keep real time even when frames are very slow (software GL)
 if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('fgl')) gsap.ticker.lagSmoothing(0);
 
-function fresh(speed = 1) {
+/** GSAP only tweens existing properties: make sure fx channels exist */
+export function ensureFx(keys: string[], value = 0) {
+  for (const k of keys) if (typeof anim.fx[k] !== 'number') anim.fx[k] = value;
+}
+
+export function fresh(speed = 1) {
   current?.kill();
   current = gsap.timeline({ defaults: { overwrite: 'auto' } });
   current.timeScale(speed);
@@ -17,7 +22,7 @@ function fresh(speed = 1) {
 }
 
 /** After the dandelion reveal: glide from the wide park shot to the envelope. */
-export function playIntro(reduced: boolean, onDone?: () => void) {
+export function parkIntro(reduced: boolean, onDone?: () => void) {
   const tl = fresh(reduced ? 4 : 1);
   anim.intro = 1;
   tl.to(anim, { intro: 0, duration: 4.2, ease: 'power3.inOut' });
@@ -26,7 +31,7 @@ export function playIntro(reduced: boolean, onDone?: () => void) {
 }
 
 /** The envelope opening choreography. */
-export function playOpen(reduced: boolean, onLetterReady: () => void) {
+export function parkOpen(reduced: boolean, onLetterReady: () => void) {
   const tl = fresh(reduced ? 3 : 1);
   anim.intro = 0;
   tl.call(() => sfx.tap(), [], 0);
@@ -55,7 +60,7 @@ export function playOpen(reduced: boolean, onLetterReady: () => void) {
 }
 
 /** Fold the letter back into the envelope, re-seal it and send it off. */
-export function playSend(reduced: boolean, onSent: () => void) {
+export function parkSend(reduced: boolean, onSent: () => void) {
   const tl = fresh(reduced ? 3 : 1);
   anim.letterVisible = 1;
   tl.to(anim, { align: 0, duration: 0.7, ease: 'power2.inOut' }, 0.1);

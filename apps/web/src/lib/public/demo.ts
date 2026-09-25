@@ -1,17 +1,19 @@
-import { createField, DEFAULT_SETTINGS, DEFAULT_THEME, type PublicForm } from '@formgl/shared';
+import { createField, DEFAULT_SETTINGS, DEFAULT_THEME, environmentMeta, type EnvironmentKey, type PublicForm } from '@formgl/shared';
 
 const opts = (...l: string[]) => l.map((label, i) => ({ id: `o${i}`, label }));
 
 /** A showcase letter used on the landing page (no backend needed). */
-export function demoForm(): PublicForm {
+export function demoForm(env: EnvironmentKey = 'park'): PublicForm {
   const f = createField;
+  const meta = environmentMeta(env);
+  const subtitles: Record<EnvironmentKey, string> = { park: 'open me slowly', seaside: 'found at low tide', atelier: 'written by the window', skies: 'carried on the wind' };
   return {
     id: 'demo',
     slug: 'demo',
     title: 'A letter for you',
     description: '',
     availability: 'open',
-    theme: { ...DEFAULT_THEME, envelopeTitle: 'For You', envelopeSubtitle: 'open me slowly', openHint: 'Tap the seal to open', timeOfDay: 'golden' },
+    theme: { ...DEFAULT_THEME, ...(env === 'park' ? {} : meta.suggest), environment: env, envelopeTitle: 'For You', envelopeSubtitle: subtitles[env], openHint: '', timeOfDay: env === 'seaside' || env === 'atelier' ? 'morning' : 'golden' },
     settings: {
       ...DEFAULT_SETTINGS,
       fieldsPerPage: 3,

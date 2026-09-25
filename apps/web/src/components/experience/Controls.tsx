@@ -2,6 +2,7 @@
 import { Volume2, VolumeX } from 'lucide-react';
 import { useExperience } from './store';
 import { sfx } from './audio';
+import { envConfig } from './envs';
 
 export function Controls() {
   const soundOn = useExperience((s) => s.soundOn);
@@ -13,7 +14,7 @@ export function Controls() {
     const next = !soundOn;
     set({ soundOn: next });
     sfx.setEnabled(next);
-    if (next) sfx.startAmbience({ wind: form.theme.wind, musicUrl: form.theme.musicUrl });
+    if (next) sfx.startAmbience({ wind: form.theme.wind, musicUrl: form.theme.musicUrl, ambience: envConfig(form.theme.environment).ambience });
     try {
       window.localStorage.setItem('fgl_sound', next ? '1' : '0');
     } catch {

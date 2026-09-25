@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { environmentMeta } from '@formgl/shared';
 import { anim, useExperience } from './store';
 import { sceneRefs } from './scene/refs';
 
@@ -54,7 +55,7 @@ export function EnvelopeHint({ onOpen }: { onOpen: () => void }) {
       <span className="fgl-hint-ring" aria-hidden />
       <span className="fgl-hint-ring two" aria-hidden />
       <span className="fgl-hint-label">
-        {available ? form.theme.openHint || 'Tap to open' : message}
+        {available ? (form.theme.openHint && form.theme.openHint !== 'Tap to open' ? form.theme.openHint : environmentMeta(form.theme.environment).hint) : message}
       </span>
     </button>
   );

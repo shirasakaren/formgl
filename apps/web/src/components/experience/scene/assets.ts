@@ -24,6 +24,8 @@ import {
   type WoodSet,
 } from './textures';
 
+import { ENV_TEXTURES } from './envTextures';
+
 export const ENVELOPE = { w: 0.232, h: 0.162, tipY: 0.56, sideY: 0.52 };
 export const LETTER = { w: 0.212, h: 0.3 };
 
@@ -46,7 +48,21 @@ export interface SceneAssets {
   wing: THREE.CanvasTexture;
   flower: THREE.CanvasTexture;
   cluster: THREE.CanvasTexture;
+  /** environment specific textures (registered by each environment) */
+  env: Record<string, THREE.Texture>;
 }
+
+export type EnvStep = [string, () => void | Promise<void>];
+export interface EnvAssetContext {
+  form: PublicForm;
+  out: SceneAssets;
+  envPaper: ReturnType<typeof paperCanvases>;
+  letterPaper: ReturnType<typeof paperCanvases>;
+  logo: HTMLImageElement | null;
+  fontCss: (key: string) => string;
+}
+
+
 
 const frame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
@@ -78,21 +94,24 @@ function loadImage(url?: string): Promise<HTMLImageElement | null> {
 let cache: { key: string; assets: SceneAssets } | null = null;
 
 export async function buildAssets(form: PublicForm, onProgress: (p: number, label: string) => void): Promise<SceneAssets> {
+  const envKey = form.theme.environment ?? 'park';
+  const isPark = envKey === 'park';
   const t = form.theme;
-  const key = JSON.stringify([form.id, form.title, t, form.settings.greeting, form.fields.length]);
+  const key = JSON.stringify([form.id, form.title, t, form.settings.greeting, form.fields.length, envKey]);
   if (cache?.key === key) return cache.assets;
 
   const steps: Array<[string, () => void | Promise<void>]> = [];
-  const out: Partial<SceneAssets> = {};
+  const out: Partial<SceneAssets> = { env: {} };
   let logo: HTMLImageElement | null = null;
 
   steps.push(['Warming up the ink', async () => {
     await loadFonts([t.titleFont, t.bodyFont, t.labelFont, 'script', 'elegant', 'serif']);
     logo = await loadImage(t.logoUrl);
   }]);
-  steps.push(['Sanding the old bench', () => {
-    out.wood = woodTextures(7);
-  }]);
+  if (isPark)
+    steps.push(['Sanding the old bench', () => {
+      out.wood = woodTextures(7);
+    }]);
   let envPaper: ReturnType<typeof paperCanvases>;
   let letterPaper: ReturnType<typeof paperCanvases>;
   steps.push(['Choosing the paper', () => {
@@ -107,7 +126,7 @@ export async function buildAssets(form: PublicForm, onProgress: (p: number, labe
       normalMap: toTexture(letterPaper.normal, { srgb: false, wrap: true }),
     };
   }]);
-  steps.push(['Addressing the envelope', () => {
+  if (isPark) steps.push(['Addressing the envelope', () => {
     const aspect = ENVELOPE.w / ENVELOPE.h;
     out.pocket = toTexture(
       envelopePocketCanvas({
@@ -153,16 +172,28 @@ export async function buildAssets(form: PublicForm, onProgress: (p: number, labe
       { anisotropy: 16 },
     );
   }]);
-  steps.push(['Raking the gravel path', () => {
-    out.gravel = gravelTextures(5);
-    out.lawn = lawnTexture(8);
-  }]);
-  steps.push(['Growing an old tree', () => {
-    out.bark = barkTextures(21);
+  if (isPark) {
+    steps.push(['Raking the gravel path', () => {
+      out.gravel = gravelTextures(5);
+      out.lawn = lawnTexture(8);
+    }]);
+    steps.push(['Growing an old tree', () => {
+      out.bark = barkTextures(21);
+    }]);
+  }
+  steps.push([isPark ? 'Listening to the leaves' : 'Setting the scene', () => {
     const leaves = toTexture(leafAtlas(512));
     leaves.premultiplyAlpha = false;
     out.leaves = leaves;
   }]);
+  // environment specific textures
+  const builder = ENV_TEXTURES[envKey];
+  if (builder) {
+    steps.push(['Setting the scene', () => {
+      const extra = builder({ form, out: out as SceneAssets, envPaper, letterPaper, logo, fontCss });
+      steps.splice(steps.indexOf(current!) + 1, 0, ...extra);
+    }]);
+  }
   steps.push(['Catching dandelion seeds', () => {
     out.seed = toTexture(seedSprite(128));
     out.dot = toTexture(softDot(64));
@@ -172,8 +203,10 @@ export async function buildAssets(form: PublicForm, onProgress: (p: number, labe
     out.cluster = toTexture(leafClusterSprite(256), { srgb: false });
   }]);
 
+  let current: EnvStep | null = null;
   for (let i = 0; i < steps.length; i++) {
     const [label, fn] = steps[i];
+    current = steps[i];
     onProgress(i / steps.length, label);
     await frame();
     await fn();

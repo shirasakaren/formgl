@@ -1420,3 +1420,56 @@
   .fgl-root { position: static; background: #fff; }
   .fgl-letter-scroll { position: static; opacity: 1; }
 }
+
+/* ───────────── environment loader vignettes ───────────── */
+.fgl-v-waves .w { animation: fgl-wave-x 2.6s linear infinite; }
+.fgl-v-waves .w1 { animation-duration: 3.4s; }
+.fgl-v-waves .w2 { animation-duration: 4.2s; }
+@keyframes fgl-wave-x { from { translate: 0 0; } to { translate: 60px 0; } }
+.fgl-v-bottle .bob { animation: fgl-bob2 2.6s ease-in-out infinite; transform-origin: 100px 90px; }
+.fgl-v-bottle .sea { animation: fgl-wave-x 2.6s linear infinite; }
+@keyframes fgl-bob2 { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(6px) rotate(5deg); } }
+.fgl-v-shell .spiral { stroke-dasharray: 260; stroke-dashoffset: 260; animation: fgl-shell 2.6s cubic-bezier(0.5, 0, 0.3, 1) infinite; }
+.fgl-v-shell .pearl { animation: fgl-dot 2.6s ease infinite; transform-origin: 132px 96px; }
+@keyframes fgl-shell { 70%, 100% { stroke-dashoffset: 0; } }
+.fgl-v-gull .g { offset-path: path('M-10 70 C 50 30, 110 90, 210 40'); animation: fgl-fly 3s linear infinite; }
+.fgl-v-gull .g1 { animation-delay: -1.2s; scale: 0.7; }
+.fgl-v-gull .wing { animation: fgl-flap2 0.5s ease-in-out infinite alternate; transform-origin: 0 0; }
+@keyframes fgl-flap2 { from { scale: 1 1; } to { scale: 1 -0.6; } }
+.fgl-v-lighthouse .beam { transform-origin: 100px 38px; animation: fgl-beam 2.6s ease-in-out infinite; }
+@keyframes fgl-beam { 0%, 100% { scale: 1 0.7; opacity: 0.4; } 50% { scale: 1 1.1; opacity: 1; } }
+.fgl-v-sunrise .sun { animation: fgl-rise 2.6s cubic-bezier(0.3, 0.6, 0.3, 1) infinite; }
+@keyframes fgl-rise { 0% { translate: 0 30px; } 70%, 100% { translate: 0 -4px; } }
+.fgl-v-typewriter .ch { opacity: 0; animation: fgl-type-ch 2.6s steps(1) infinite; }
+@keyframes fgl-type-ch { 0% { opacity: 0; } 8%, 92% { opacity: 0.75; } 100% { opacity: 0; } }
+.fgl-v-typewriter .key { animation: fgl-key 1.43s ease-in-out infinite; }
+@keyframes fgl-key { 0%, 80%, 100% { translate: 0 0; } 88% { translate: 0 1.5px; } }
+.fgl-v-candle .flame { transform-origin: 100px 56px; animation: fgl-flicker 0.9s ease-in-out infinite alternate; }
+.fgl-v-candle .flame.inner { animation-duration: 0.6s; }
+.fgl-v-candle .glow { animation: fgl-glow 1.3s ease-in-out infinite alternate; transform-origin: 100px 44px; }
+@keyframes fgl-flicker { 0% { transform: scale(1, 1) rotate(-2deg); } 50% { transform: scale(0.94, 1.08) rotate(2deg); } 100% { transform: scale(1.03, 0.95) rotate(-1deg); } }
+@keyframes fgl-glow { from { transform: scale(0.92); opacity: 0.16; } to { transform: scale(1.08); opacity: 0.28; } }
+.fgl-v-teacup .steam { stroke-dasharray: 40; animation: fgl-steam 2.6s ease-in-out infinite; }
+.fgl-v-teacup .s1 { animation-delay: 0.5s; }
+.fgl-v-teacup .s2 { animation-delay: 1s; }
+@keyframes fgl-steam { 0% { stroke-dashoffset: 40; opacity: 0; translate: 0 6px; } 40% { opacity: 1; } 100% { stroke-dashoffset: -40; opacity: 0; translate: 0 -10px; } }
+.fgl-v-clock .minute { transform-origin: 100px 70px; animation: fgl-spin2 2.6s linear infinite; }
+.fgl-v-clock .hour { transform-origin: 100px 70px; animation: fgl-spin2 31.2s linear infinite; }
+@keyframes fgl-spin2 { to { rotate: 360deg; } }
+.fgl-v-balloon .b { animation: fgl-balloon 2.6s ease-in-out infinite; }
+.fgl-v-balloon .b0 { translate: 78px 62px; }
+.fgl-v-balloon .b1 { translate: 100px 54px; animation-delay: -0.8s; }
+.fgl-v-balloon .b2 { translate: 122px 64px; animation-delay: -1.6s; }
+@keyframes fgl-balloon { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-10px) rotate(4deg); } }
+.fgl-v-clouds .c { animation: fgl-cloud 5.2s linear infinite; }
+.fgl-v-clouds .c0 { translate: 20px 50px; }
+.fgl-v-clouds .c1 { translate: 90px 80px; animation-duration: 7s; scale: 0.8; }
+.fgl-v-clouds .c2 { translate: 60px 20px; animation-duration: 9s; scale: 0.6; }
+@keyframes fgl-cloud { from { transform: translateX(-30px); } to { transform: translateX(60px); } }
+.fgl-v-hotair .float { animation: fgl-balloon 3.2s ease-in-out infinite; transform-origin: 100px 60px; }
+.fgl-v-hotair .cl { animation: fgl-cloud 6s linear infinite alternate; }
+.fgl-v-hotair .cl.two { animation-duration: 8s; }
+.fgl-v-kite .kite { translate: 110px 50px; animation: fgl-kite 2.6s ease-in-out infinite; }
+.fgl-v-kite .tail { animation: fgl-tail 0.8s ease-in-out infinite alternate; transform-origin: 0 30px; }
+@keyframes fgl-kite { 0%, 100% { transform: rotate(-10deg) translate(0, 0); } 50% { transform: rotate(12deg) translate(8px, -8px); } }
+@keyframes fgl-tail { from { rotate: -8deg; } to { rotate: 8deg; } }

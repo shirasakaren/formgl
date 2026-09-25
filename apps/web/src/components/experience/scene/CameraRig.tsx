@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { anim } from '../store';
-import { ENVELOPE, LETTER } from './assets';
+import { LETTER } from './assets';
 import { sceneRefs } from './refs';
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
@@ -44,31 +44,31 @@ export function CameraRig({ sway = true, reducedMotion = false }: { sway?: boole
     const cam = camera as THREE.PerspectiveCamera;
     const aspect = size.width / Math.max(1, size.height);
     const portrait = aspect < 0.85;
-    const fov = portrait ? 42 : aspect < 1.25 ? 36 : 32;
+    const C = sceneRefs.cam;
+    const pi = portrait ? 1 : 0;
+    const fov = portrait ? C.fov[2] : aspect < 1.25 ? C.fov[1] : C.fov[0];
     if (Math.abs(cam.fov - fov) > 0.01) {
       cam.fov = fov;
       cam.updateProjectionMatrix();
     }
     const tanH = Math.tan(THREE.MathUtils.degToRad(fov / 2));
-    const rest = sceneRefs.envelopeRest.pos;
 
-    /* ── hero: envelope leaning on the backrest in the lower third, the park above ── */
-    const frac = portrait ? 0.62 : aspect < 1.25 ? 0.44 : 0.32;
-    // fit by width, but never let the envelope fill too much of the height (ultrawide / landscape phones)
-    const heroDist = Math.max(ENVELOPE.w / (frac * 2 * tanH * aspect), ENVELOPE.h / ((portrait ? 0.34 : 0.38) * 2 * tanH));
-    v.heroT.set(rest.x, rest.y, rest.z);
-    spherical(v.heroT, portrait ? 0.26 : 0.3, portrait ? 0.42 : 0.62, heroDist, v.heroP);
-    // look a little above the envelope so the backrest and the park fill the top
-    v.heroT.y += heroDist * (portrait ? 0.2 : 0.11);
+    /* ── hero: the vessel framed with its world around it ── */
+    const frac = portrait ? C.heroFracW[2] : aspect < 1.25 ? C.heroFracW[1] : C.heroFracW[0];
+    // fit by width, but never let the subject fill too much of the height (ultrawide / landscape phones)
+    const heroDist = Math.max(C.subjectSize[0] / (frac * 2 * tanH * aspect), C.subjectSize[1] / (C.heroFracH[pi] * 2 * tanH));
+    v.heroT.copy(C.subject);
+    spherical(v.heroT, C.heroElev[pi], C.heroAzim[pi], heroDist, v.heroP);
+    v.heroT.y += heroDist * C.heroLookUp[pi];
 
-    /* ── close: the envelope lifts toward us ── */
-    v.closeT.set(rest.x * 0.6, rest.y + 0.06, rest.z + 0.11);
-    spherical(v.closeT, portrait ? 0.24 : 0.18, portrait ? 0.3 : 0.4, heroDist * (portrait ? 0.78 : 0.74), v.closeP);
+    /* ── close: the vessel comes toward us ── */
+    v.closeT.copy(C.closeTarget);
+    spherical(v.closeT, C.closeElev[pi], C.closeAzim[pi], heroDist * C.closeDist[pi], v.closeP);
     sceneRefs.camClose.copy(v.closeP);
 
     /* ── establishing shot ── */
-    v.introT.set(-0.1, 0.62, -0.3);
-    spherical(v.introT, 0.12, 0.5, portrait ? 4.6 : 3.4, v.introP);
+    v.introT.copy(C.introTarget);
+    spherical(v.introT, C.introElev, C.introAzim, C.introDist[pi], v.introP);
 
     /* ── letter: sized to match the DOM paper so the hand-off is seamless ── */
     const lr = sceneRefs.letterRect;
@@ -80,8 +80,8 @@ export function CameraRig({ sway = true, reducedMotion = false }: { sway?: boole
     const fitDist = Math.max(LETTER.h / (0.8 * 2 * tanH), LETTER.w / (0.8 * 2 * tanH * aspect));
     const presentDist = Math.max(letterDist * 1.3, fitDist);
     const al = smooth(clamp(anim.align));
-    const letterCentre = v.letterT.set(rest.x * 0.3, rest.y + 0.2, rest.z + 0.17);
-    v.dir.set(0.06, 0.16, 1).normalize();
+    const letterCentre = v.letterT.copy(C.letterCentre);
+    v.dir.copy(C.letterDir);
     v.letterP.copy(letterCentre).addScaledVector(v.dir, presentDist + (letterDist - presentDist) * al);
     v.letterFinal.copy(letterCentre).addScaledVector(v.dir, letterDist);
 
@@ -101,13 +101,7 @@ export function CameraRig({ sway = true, reducedMotion = false }: { sway?: boole
       v.pos.lerp(v.introP, k);
       v.tgt.lerp(v.introT, k);
     }
-    if (anim.flyAway > 0) {
-      // follow the envelope up into the sky a little
-      const k = smooth(clamp(anim.flyAway));
-      v.tgt.y += k * 0.9;
-      v.tgt.z -= k * 0.6;
-      v.pos.y += k * 0.15;
-    }
+    if (anim.flyAway > 0 && C.flyAway) C.flyAway(smooth(clamp(anim.flyAway)), v.pos, v.tgt);
 
     /* ── life: slow handheld drift + pointer parallax ── */
     const t = state.clock.elapsedTime;
