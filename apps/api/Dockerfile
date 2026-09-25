@@ -11,12 +11,12 @@ FROM base AS build
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
 COPY apps/api/package.json apps/api/
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --filter "@formgl/api..."
+RUN pnpm install --frozen-lockfile --filter "@formgl/api..."
 COPY packages/shared packages/shared
 COPY apps/api apps/api
 RUN pnpm --filter @formgl/shared build && pnpm --filter @formgl/api build
 # self-contained production bundle: dist/, drizzle/ migrations, prod node_modules (incl. @formgl/shared)
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm --filter @formgl/api deploy --prod --legacy /out
+RUN pnpm --filter @formgl/api deploy --prod --legacy /out
 
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production API_PORT=4000

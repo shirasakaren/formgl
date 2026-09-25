@@ -15,7 +15,7 @@ ENV API_INTERNAL_URL=$API_INTERNAL_URL NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_UR
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
 COPY apps/web/package.json apps/web/
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --filter "@formgl/web..."
+RUN pnpm install --frozen-lockfile --filter "@formgl/web..."
 COPY packages/shared packages/shared
 COPY apps/web apps/web
 RUN pnpm --filter @formgl/shared build && pnpm --filter @formgl/web build
