@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import type { LoaderStyle } from '@formgl/shared';
 import { useExperience } from '../store';
 
@@ -124,12 +124,61 @@ export function Loader({ hidden }: { hidden: boolean }) {
   const active: Vignette = style === 'mixed' || style === 'minimal' || !VIGNETTES.includes(style as Vignette) ? VIGNETTES[idx] : (style as Vignette);
   const ink = theme?.inkColor ?? '#2b2320';
   const accent = theme?.sealColor ?? '#8e1b1b';
-  const pct = Math.round(progress * 100);
+  // the bar eases toward the real progress and keeps creeping a little while a step runs,
+  // so the loader never looks stuck
+  const [shown, setShown] = useState(0);
+  const target = useRef(0);
+  target.current = progress;
+  useEffect(() => {
+    if (hidden) return;
+    const t = setInterval(() => {
+      setShown((v) => {
+        const goal = target.current;
+        if (goal >= 1) return v + (1 - v) * 0.35;
+        const cap = Math.min(0.985, goal + 0.05);
+        const next = v < goal ? v + (goal - v) * 0.22 : v + (cap - v) * 0.012;
+        return Math.min(cap, next);
+      });
+    }, 110);
+    return () => clearInterval(t);
+  }, [hidden]);
+  const pct = Math.round(Math.min(1, shown) * 100);
 
   return (
     <div className={`fgl-loader${hidden ? ' is-hidden' : ''}`} style={{ background: theme?.loaderColor ?? '#f3e9dc', color: ink }} role="status" aria-live="polite" aria-busy={!hidden}>
+      <Stage vignettes={VIGNETTES} active={active} ink={ink} accent={accent} show={style !== 'minimal'} />
+      <p className="fgl-loader-quote">{quote}</p>
+      <div className="fgl-loader-progress" aria-hidden>
+        <svg viewBox="0 0 240 12" preserveAspectRatio="none">
+          <path d="M2 7 C 40 3, 80 10, 120 6 S 200 3, 238 7" fill="none" stroke={ink} strokeOpacity="0.14" strokeWidth="2" strokeLinecap="round" />
+          <path
+            d="M2 7 C 40 3, 80 10, 120 6 S 200 3, 238 7"
+            fill="none"
+            stroke={accent}
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            pathLength={100}
+            strokeDasharray="100"
+            strokeDashoffset={100 - pct}
+            style={{ transition: 'stroke-dashoffset 0.25s linear' }}
+          />
+        </svg>
+        {/* runs on the compositor: keeps moving even if the page is briefly busy */}
+        <span className="fgl-loader-glint" style={{ background: accent }} />
+      </div>
+      <p className="fgl-loader-label">
+        <span>{label}…</span> <span className="pct">{pct}%</span>
+      </p>
+      <span className="sr-only">Loading {pct} percent</span>
+    </div>
+  );
+}
+
+/** the drawings: memoised so the ticking progress bar doesn't re-render them */
+const Stage = memo(function Stage({ vignettes: VIGNETTES, active, ink, accent, show }: { vignettes: Vignette[]; active: Vignette; ink: string; accent: string; show: boolean }) {
+  return (
       <div className="fgl-loader-stage">
-        {style !== 'minimal' &&
+        {show &&
           VIGNETTES.map((v) => (
             <div key={v} className={`fgl-loader-vignette${v === active ? ' is-active' : ''}`}>
               {v === 'ink' && <Ink ink={ink} />}
@@ -155,27 +204,5 @@ export function Loader({ hidden }: { hidden: boolean }) {
             </div>
           ))}
       </div>
-      <p className="fgl-loader-quote">{quote}</p>
-      <div className="fgl-loader-progress" aria-hidden>
-        <svg viewBox="0 0 240 12" preserveAspectRatio="none">
-          <path d="M2 7 C 40 3, 80 10, 120 6 S 200 3, 238 7" fill="none" stroke={ink} strokeOpacity="0.14" strokeWidth="2" strokeLinecap="round" />
-          <path
-            d="M2 7 C 40 3, 80 10, 120 6 S 200 3, 238 7"
-            fill="none"
-            stroke={accent}
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            pathLength={100}
-            strokeDasharray="100"
-            strokeDashoffset={100 - pct}
-            style={{ transition: 'stroke-dashoffset 0.5s ease' }}
-          />
-        </svg>
-      </div>
-      <p className="fgl-loader-label">
-        <span>{label}…</span> <span className="pct">{pct}%</span>
-      </p>
-      <span className="sr-only">Loading {pct} percent</span>
-    </div>
   );
-}
+});

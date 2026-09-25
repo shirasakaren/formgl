@@ -133,7 +133,7 @@ export function FallingLeaves({ assets, count = 14, petals = false, quality }: {
     });
     mesh.current.instanceMatrix.needsUpdate = true;
   });
-  return <instancedMesh ref={mesh} args={[res.geo, res.mat, n]} castShadow frustumCulled={false} />;
+  return <instancedMesh ref={mesh} args={[res.geo, res.mat, n]} frustumCulled={false} />;
 }
 
 /* ───────────── dandelion seeds drifting through the air ───────────── */
@@ -229,10 +229,10 @@ function Butterfly({ assets, seed }: { assets: SceneAssets; seed: number }) {
   return (
     <group ref={g}>
       <group rotation={[0, 0, 0]}>
-        <mesh ref={l} geometry={res.geo} material={res.mat} rotation={[0, 0, 0]} castShadow>
+        <mesh ref={l} geometry={res.geo} material={res.mat} rotation={[0, 0, 0]}>
         </mesh>
         <group scale={[1, -1, 1]}>
-          <mesh ref={r} geometry={res.geo} material={res.mat} castShadow />
+          <mesh ref={r} geometry={res.geo} material={res.mat} />
         </group>
       </group>
     </group>

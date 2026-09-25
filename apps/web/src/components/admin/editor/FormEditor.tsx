@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowLeft, Check, Eye, Hammer, Loader2, Palette, Save, Send, Settings2, Cloud } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check, Eye, Hammer, History, Loader2, Palette, Redo2, Rocket, Save, Send, Settings2, Cloud, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api, ApiError, errorMessage } from '@/lib/admin/api';
 import { useEditor } from '@/lib/admin/editor-store';
 import { cn } from '@/lib/admin/utils';
-import { Button, EmptyState, PageLoader, StatusBadge } from '../ui';
+import { Button, EmptyState, IconButton, PageLoader, StatusBadge } from '../ui';
+import { VersionsDrawer } from './VersionsDrawer';
 import { BuildTab } from './BuildTab';
 import { DesignTab } from './DesignTab';
 import { SettingsTab } from './SettingsTab';
@@ -29,6 +30,10 @@ export function FormEditor({ id }: { id: string }) {
   const revision = useEditor((s) => s.revision);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTabState] = useState<TabId>('build');
+  const [history, setHistory] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const canUndo = useEditor((s) => s.past.length > 0);
+  const canRedo = useEditor((s) => s.future.length > 0);
   const savedRev = useRef(0);
   const inflight = useRef<Promise<boolean> | null>(null);
 
@@ -100,6 +105,18 @@ export function FormEditor({ id }: { id: string }) {
         e.preventDefault();
         void saveNow().then((ok) => ok && toast.success('Saved'));
       }
+      // undo / redo — but leave text fields their own native undo
+      const el = e.target as HTMLElement | null;
+      const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !typing) {
+        e.preventDefault();
+        if (e.shiftKey) useEditor.getState().redo();
+        else useEditor.getState().undo();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y' && !typing) {
+        e.preventDefault();
+        useEditor.getState().redo();
+      }
     };
     const onUnload = (e: BeforeUnloadEvent) => {
       if (useEditor.getState().revision !== savedRev.current) {
@@ -114,6 +131,27 @@ export function FormEditor({ id }: { id: string }) {
       if (useEditor.getState().revision !== savedRev.current) void saveNow();
     };
   }, [saveNow]);
+
+  const publishChanges = async () => {
+    const f = useEditor.getState().form;
+    if (!f) return;
+    // first publish needs a link: that lives in the Share tab
+    if (f.slug.startsWith('draft-')) {
+      setTab('share');
+      return;
+    }
+    setPublishing(true);
+    try {
+      if (!(await saveNow())) throw new Error('Save your changes first');
+      const doc = await api.forms.publish(f.id);
+      useEditor.getState().syncServer(doc);
+      toast.success(`Version ${doc.liveVersion} is live ✉︎`);
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   if (error)
     return (
@@ -140,12 +178,29 @@ export function FormEditor({ id }: { id: string }) {
             <StatusBadge status={form.status} />
           </span>
           <SaveIndicator state={saveState} />
+          <span className="hidden items-center md:flex">
+            <IconButton icon={Undo2} label="Undo (⌘Z)" size="sm" onClick={() => useEditor.getState().undo()} disabled={!canUndo} />
+            <IconButton icon={Redo2} label="Redo (⇧⌘Z)" size="sm" onClick={() => useEditor.getState().redo()} disabled={!canRedo} />
+            <IconButton icon={History} label="Version history" size="sm" onClick={() => setHistory(true)} />
+          </span>
           <Button size="sm" icon={Eye} className="hidden md:inline-flex" onClick={async () => { await saveNow(); window.open(`/${form.slug}?preview=1`, '_blank', 'noopener'); }}>
             Preview
           </Button>
-          <Button size="sm" variant="primary" icon={Save} onClick={() => saveNow().then((ok) => ok && toast.success('Saved'))} loading={saveState === 'saving'} disabled={saveState === 'saved' || saveState === 'idle'}>
-            <span className="hidden sm:inline">Save</span>
-          </Button>
+          {form.status === 'published' ? (
+            (form.hasUnpublishedChanges || saveState === 'dirty' || saveState === 'saving') ? (
+              <Button size="sm" variant="primary" icon={Rocket} onClick={publishChanges} loading={publishing} title="Your draft differs from what respondents see">
+                <span className="hidden sm:inline">Publish changes</span>
+              </Button>
+            ) : (
+              <span className="hidden items-center gap-1 rounded-full bg-[#e7f3ea] px-2.5 py-1 text-[12px] font-medium text-[#2f7a4a] sm:inline-flex" title="Respondents see exactly this">
+                <Check className="size-3.5" /> Live · v{form.liveVersion ?? 1}
+              </span>
+            )
+          ) : (
+            <Button size="sm" variant="primary" icon={form.slug.startsWith('draft-') ? Send : Save} onClick={() => (form.slug.startsWith('draft-') ? setTab('share') : publishChanges())} loading={publishing}>
+              <span className="hidden sm:inline">{form.slug.startsWith('draft-') ? 'Publish…' : 'Publish'}</span>
+            </Button>
+          )}
         </div>
         <nav role="tablist" aria-label="Editor sections" className="fgl-scroll flex gap-1 overflow-x-auto px-3 sm:px-5">
           {TABS.map((t) => (
@@ -171,6 +226,7 @@ export function FormEditor({ id }: { id: string }) {
         {tab === 'settings' && <SettingsTab />}
         {tab === 'share' && <ShareTab saveNow={saveNow} />}
       </div>
+      <VersionsDrawer open={history} onClose={() => setHistory(false)} saveNow={saveNow} />
     </div>
   );
 }

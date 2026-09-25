@@ -226,9 +226,9 @@ export function Letter3D({
     }
     if (r >= 1) {
       tmp.e.set(
-        Math.sin(t * 0.8) * 0.008,
-        Math.sin(t * 0.6) * 0.01,
-        Math.sin(t * 0.5) * 0.004,
+        Math.sin(t * 0.8) * 0.004,
+        Math.sin(t * 0.6) * 0.005,
+        Math.sin(t * 0.5) * 0.002,
       );
       tmp.q2.setFromEuler(tmp.e);
       tmp.q.multiply(tmp.q2);

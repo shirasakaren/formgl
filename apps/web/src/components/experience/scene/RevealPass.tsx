@@ -68,7 +68,7 @@ export interface RevealProps {
 }
 
 export function RevealPass({ mode = 'dandelion', color, run, done: finished = false, reduced, renderScene, onDone }: RevealProps) {
-  const { size } = useThree();
+  const { size, gl } = useThree();
   const done = useRef(onDone);
   done.current = onDone;
   const clock = useRef({ t: 0, finished: false });
@@ -254,6 +254,18 @@ export function RevealPass({ mode = 'dandelion', color, run, done: finished = fa
     },
     [res],
   );
+  // compile the reveal's shaders while the loader is still up (Warmup links them)
+  useEffect(() => {
+    const prevTone = gl.toneMapping;
+    try {
+      gl.toneMapping = THREE.NoToneMapping; // same state as when it draws
+      gl.setRenderTarget(null);
+      gl.compile(res.scene, res.cam);
+    } catch {
+      /* compiled on first use instead */
+    }
+    gl.toneMapping = prevTone;
+  }, [gl, res]);
 
   useFrame((state, delta) => {
     const { gl, scene, camera } = state;

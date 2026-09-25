@@ -15,7 +15,7 @@ export function Clouds({ assets, quality, lit, shade, horizon, sunDir }: { asset
     const rnd = mulberry32(17);
     type Puff = { p: THREE.Vector3; size: number; alpha: number; drift: number };
     const puffs: Puff[] = [];
-    const sea = quality === 'low' ? 70 : 130;
+    const sea = quality === 'low' ? 50 : quality === 'medium' ? 85 : 120;
     for (let i = 0; i < sea; i++) {
       // a wide disc below us, denser toward the horizon
       const a = rnd() * Math.PI * 2;
@@ -128,7 +128,7 @@ export function CloudFloor({ lit, shade, horizon }: { lit: string; shade: string
         uniform float uTime; uniform vec3 uLit; uniform vec3 uShade; uniform vec3 uHorizon; varying vec3 vW;
         float h(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
         float n(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f); return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y); }
-        float fbm(vec2 p){ float a=0.5, s=0.0; for(int i=0;i<5;i++){ s+=a*n(p); p=p*2.03+vec2(1.7,9.2); a*=0.5; } return s; }
+        float fbm(vec2 p){ float a=0.5, s=0.0; for(int i=0;i<4;i++){ s+=a*n(p); p=p*2.03+vec2(1.7,9.2); a*=0.5; } return s; }
         void main(){
           vec2 p = vW.xz * 0.012 + vec2(uTime * 0.004, 0.0);
           float c = fbm(p);

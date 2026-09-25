@@ -19,6 +19,31 @@ import './experience.css';
 
 const SceneRoot = dynamic(() => import('./scene/SceneRoot'), { ssr: false });
 
+/** the GPU's name, when the browser tells us */
+let probe: { webgl: boolean; gpu: string } | null = null;
+/** one throw-away WebGL context tells us both whether WebGL works and which GPU it is */
+function probeGpu() {
+  if (probe) return probe;
+  probe = { webgl: false, gpu: '' };
+  try {
+    const c = document.createElement('canvas');
+    const gl = (c.getContext('webgl2') || c.getContext('webgl')) as WebGLRenderingContext | null;
+    if (!gl) return probe;
+    probe.webgl = true;
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    probe.gpu = String(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+  } catch {
+    /* no WebGL */
+  }
+  return probe;
+}
+const gpuName = () => probeGpu().gpu;
+
+/**
+ * Pick a quality tier once, before anything loads (switching later would rebuild the world).
+ * Errs on the side of smooth: only strong GPUs get "high".
+ */
 function detectQuality(): Quality {
   try {
     const q = new URLSearchParams(window.location.search).get('quality');
@@ -28,9 +53,15 @@ function detectQuality(): Quality {
     const cores = nav.hardwareConcurrency ?? 8;
     const coarse = window.matchMedia('(pointer: coarse)').matches;
     const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || coarse;
-    const small = Math.min(window.innerWidth, window.innerHeight) < 700;
-    if (mobile || small) return mem >= 6 && cores >= 6 ? 'medium' : 'low';
-    if (cores >= 8 && mem >= 8) return 'high';
+    const gpu = gpuName();
+    if (/SwiftShader|llvmpipe|softpipe|Software|Basic Render|Mali-4|Mali-T|Adreno \(TM\) [1-5]\d\d|PowerVR|Intel.*HD Graphics [2-5]\d{2,3}/i.test(gpu)) return 'low';
+    if (mobile) {
+      if (mem < 4 || cores < 6) return 'low';
+      return /Apple GPU|Adreno \(TM\) (7|8)\d\d|Mali-G7[1-9]|Mali-G[7-9]\d\d|Immortalis/i.test(gpu) ? 'medium' : 'low';
+    }
+    const strong = /NVIDIA|GeForce|RTX|Quadro|Radeon (RX|Pro|VII)|Apple M\d (Pro|Max|Ultra)|Apple M[3-9]/i.test(gpu);
+    if (strong && cores >= 8 && mem >= 8) return 'high';
+    if (mem < 4 || cores < 4) return 'low';
     return 'medium';
   } catch {
     return 'medium';
@@ -38,12 +69,7 @@ function detectQuality(): Quality {
 }
 
 function hasWebGL(): boolean {
-  try {
-    const c = document.createElement('canvas');
-    return !!(c.getContext('webgl2') || c.getContext('webgl'));
-  } catch {
-    return false;
-  }
+  return probeGpu().webgl;
 }
 
 export function Experience({ form, demo = false, preview = false }: { form: PublicForm; demo?: boolean; preview?: boolean }) {

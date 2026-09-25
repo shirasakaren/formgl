@@ -312,6 +312,51 @@ export interface FormDoc {
   createdAt: string;
   updatedAt: string;
   publishedAt?: string | null;
+  /** version respondents currently see (0 = never published) */
+  liveVersion?: number;
+  /** when the live version was published */
+  livePublishedAt?: string | null;
+  /** the draft differs from what respondents see */
+  hasUnpublishedChanges?: boolean;
+  pinned?: boolean;
+}
+
+export interface FormVersionSummary {
+  id: string;
+  version: number;
+  title: string;
+  note?: string;
+  fieldCount: number;
+  questionCount: number;
+  environment: EnvironmentKey;
+  createdAt: string;
+  /** this is what respondents see right now */
+  live: boolean;
+}
+
+export type WebhookKind = 'json' | 'slack' | 'discord';
+
+export interface WebhookDoc {
+  id: string;
+  url: string;
+  kind: WebhookKind;
+  active: boolean;
+  /** shown once on creation; afterwards masked */
+  secret: string;
+  createdAt: string;
+  lastDelivery?: WebhookDeliveryDoc | null;
+}
+
+export interface WebhookDeliveryDoc {
+  id: number;
+  event: string;
+  attempt: number;
+  status: number | null;
+  ok: boolean;
+  durationMs: number | null;
+  error?: string | null;
+  responseBody?: string | null;
+  createdAt: string;
 }
 
 /** what GET /api/public/forms/:slug returns */
@@ -337,7 +382,14 @@ export interface FormSummary {
   publishedAt?: string | null;
   responseCount: number;
   viewCount: number;
-  theme: Pick<FormTheme, 'envelopeColor' | 'sealColor' | 'loaderColor' | 'paperColor' | 'logoUrl'>;
+  theme: Pick<FormTheme, 'envelopeColor' | 'sealColor' | 'loaderColor' | 'paperColor' | 'logoUrl' | 'environment' | 'accentColor'>;
+  liveVersion?: number;
+  hasUnpublishedChanges?: boolean;
+  pinned?: boolean;
+  /** newest response, if any */
+  lastResponseAt?: string | null;
+  /** responses per day for the last 14 days (oldest first) */
+  spark?: number[];
 }
 
 /* ───────────────────────── Responses & analytics ───────────────────────── */
@@ -362,6 +414,8 @@ export interface ResponseMeta {
   /** ms from first view to submit */
   durationMs?: number;
   sessionId?: string;
+  /** version of the form the respondent answered */
+  formVersion?: number;
 }
 
 export interface FormResponse {

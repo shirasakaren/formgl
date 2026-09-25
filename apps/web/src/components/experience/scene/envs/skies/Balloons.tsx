@@ -63,8 +63,6 @@ export function Balloons({ palette, accent, onOpen }: { palette: string[]; accen
           clearcoatRoughness: 0.12,
           sheen: 0.6,
           sheenColor: new THREE.Color(c).lerp(new THREE.Color('#ffffff'), 0.6),
-          transparent: true,
-          opacity: 0.94,
         }),
     );
     const replyMat = new THREE.MeshPhysicalMaterial({ color: accent, roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.1, sheen: 0.6, sheenColor: new THREE.Color(accent).lerp(new THREE.Color('#ffffff'), 0.6) });

@@ -112,8 +112,9 @@ export function CameraRig({ sway = true, reducedMotion = false }: { sway?: boole
     v.dir.subVectors(v.tgt, v.pos).normalize();
     v.right.crossVectors(v.dir, v.up).normalize();
     v.camUp.crossVectors(v.right, v.dir).normalize();
-    const drift = swayAmt * dist * 0.012;
-    const par = (reducedMotion ? 0 : 1) * dist * 0.035 * (c >= 1.5 ? 0.35 : 1);
+    // barely any handheld drift while reading: the form should hold still under the pointer
+    const drift = swayAmt * dist * 0.012 * (c >= 1.5 ? 0.25 : 1);
+    const par = (reducedMotion ? 0 : 1) * dist * 0.035 * (c >= 1.5 ? 0.15 : 1);
     v.pos
       .addScaledVector(v.right, Math.sin(t * 0.21) * drift + v.px * par)
       .addScaledVector(v.camUp, Math.sin(t * 0.17 + 1.3) * drift * 0.7 + v.py * par * 0.6);

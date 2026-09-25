@@ -25,6 +25,13 @@ interface EditorState {
   duplicateField: (id: string) => void;
   removeField: (id: string) => void;
   moveField: (id: string, delta: number) => void;
+  /** undo / redo of local edits */
+  past: FormDoc[];
+  future: FormDoc[];
+  undo: () => void;
+  redo: () => void;
+  /** replace the whole draft (restore a version, discard changes) — undoable */
+  replaceDraft: (form: FormDoc) => void;
 }
 
 const cloneField = (f: FormField): FormField => {
@@ -34,13 +41,70 @@ const cloneField = (f: FormField): FormField => {
   return c;
 };
 
+const HISTORY = 100;
+/** edits closer together than this (typing, dragging a slider) collapse into one undo step */
+const COALESCE_MS = 700;
+
 export const useEditor = create<EditorState>((set, get) => {
+  let lastPush = 0;
   const edit = (fn: (form: FormDoc) => FormDoc) => {
-    const { form, revision } = get();
+    const { form, revision, past } = get();
     if (!form) return;
-    set({ form: fn(form), revision: revision + 1, saveState: 'dirty' });
+    const now = performance.now();
+    const nextPast = now - lastPush < COALESCE_MS && past.length ? past : [...past.slice(-HISTORY + 1), form];
+    lastPush = now;
+    set({ form: fn(form), revision: revision + 1, saveState: 'dirty', past: nextPast, future: [] });
   };
+  /** keep server-owned fields (status, slug, versions…) when travelling through history */
+  const keepServer = (target: FormDoc, current: FormDoc): FormDoc => ({
+    ...target,
+    status: current.status,
+    slug: current.slug,
+    publishedAt: current.publishedAt,
+    updatedAt: current.updatedAt,
+    liveVersion: current.liveVersion,
+    livePublishedAt: current.livePublishedAt,
+    hasUnpublishedChanges: current.hasUnpublishedChanges,
+    pinned: current.pinned,
+  });
   return {
+    past: [],
+    future: [],
+    undo: () => {
+      const { form, past, future, revision, selectedId } = get();
+      if (!form || !past.length) return;
+      const prev = keepServer(past[past.length - 1], form);
+      lastPush = 0;
+      set({
+        form: prev,
+        past: past.slice(0, -1),
+        future: [form, ...future].slice(0, HISTORY),
+        revision: revision + 1,
+        saveState: 'dirty',
+        selectedId: prev.fields.some((f) => f.id === selectedId) ? selectedId : (prev.fields[0]?.id ?? null),
+      });
+    },
+    redo: () => {
+      const { form, past, future, revision, selectedId } = get();
+      if (!form || !future.length) return;
+      const next = keepServer(future[0], form);
+      lastPush = 0;
+      set({
+        form: next,
+        past: [...past, form].slice(-HISTORY),
+        future: future.slice(1),
+        revision: revision + 1,
+        saveState: 'dirty',
+        selectedId: next.fields.some((f) => f.id === selectedId) ? selectedId : (next.fields[0]?.id ?? null),
+      });
+    },
+    replaceDraft: (doc) => {
+      const { form, past, revision } = get();
+      if (!form) return;
+      lastPush = 0;
+      const next = { ...doc, theme: withThemeDefaults(doc.theme), settings: withSettingsDefaults(doc.settings), fields: doc.fields ?? [] };
+      set({ form: next, past: [...past, form].slice(-HISTORY), future: [], revision: revision + 1, saveState: 'dirty', selectedId: next.fields[0]?.id ?? null });
+    },
     form: null,
     selectedId: null,
     saveState: 'idle',
@@ -51,11 +115,25 @@ export const useEditor = create<EditorState>((set, get) => {
         selectedId: form.fields?.[0]?.id ?? null,
         saveState: 'idle',
         revision: 0,
+        past: [],
+        future: [],
       }),
     syncServer: (srv) => {
       const { form } = get();
       if (!form) return;
-      set({ form: { ...form, status: srv.status, slug: srv.slug, publishedAt: srv.publishedAt, updatedAt: srv.updatedAt } });
+      set({
+        form: {
+          ...form,
+          status: srv.status,
+          slug: srv.slug,
+          publishedAt: srv.publishedAt,
+          updatedAt: srv.updatedAt,
+          liveVersion: srv.liveVersion,
+          livePublishedAt: srv.livePublishedAt,
+          hasUnpublishedChanges: srv.hasUnpublishedChanges,
+          pinned: srv.pinned,
+        },
+      });
     },
     setSaveState: (saveState) => set({ saveState }),
     select: (selectedId) => set({ selectedId }),

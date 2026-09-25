@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo } from 'react';
-import { Environment, Lightformer } from '@react-three/drei';
+import { Lightformer } from '@react-three/drei';
+import { BakedEnvironment } from '../../common/BakedEnvironment';
 import * as THREE from 'three';
 import type { PublicForm } from '@formgl/shared';
 import { useExperience, type Quality } from '../../../store';
@@ -65,6 +66,8 @@ export default function SeasideWorld({ form, assets, quality, onOpen }: { form: 
   }, []);
   useEffect(() => {
     sceneRefs.cam = seasideCam();
+    sceneRefs.shadowRate = 8;
+    sceneRefs.shadowDirty = true;
   }, []);
   const shadowSize = quality === 'low' ? 1024 : 2048;
   return (
@@ -95,12 +98,12 @@ export default function SeasideWorld({ form, assets, quality, onOpen }: { form: 
       <hemisphereLight args={[preset.hemiSky, '#d9c7a0', preset.hemiIntensity]} />
       {/* soft light bouncing off the bright beach and sea toward the viewer */}
       <directionalLight color={preset.skyHorizon} intensity={1.6} position={[0.4, 1.2, 3]} />
-      <Environment resolution={64} frames={1} environmentIntensity={0.5}>
+      <BakedEnvironment intensity={0.5}>
         <Lightformer form="rect" intensity={1.4} color={preset.skyTop} scale={[40, 40, 1]} position={[0, 20, 0]} rotation={[Math.PI / 2, 0, 0]} />
         <Lightformer form="rect" intensity={1.1} color={preset.skyHorizon} scale={[80, 8, 1]} position={[0, 2, -25]} />
         <Lightformer form="rect" intensity={0.7} color="#e8d6b0" scale={[80, 6, 1]} position={[0, -2, 20]} rotation={[0, Math.PI, 0]} />
         <Lightformer form="circle" intensity={8} color={preset.sunGlow} scale={4} position={[sun.x * 20, sun.y * 20, sun.z * 20]} target={[0, 0, 0]} />
-      </Environment>
+      </BakedEnvironment>
       <Sand assets={assets} />
       <Sea preset={preset} quality={quality} />
       <Horizon preset={preset} />

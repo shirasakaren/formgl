@@ -7,7 +7,7 @@ import { ENVELOPE, type SceneAssets } from './assets';
 import { BendPanel } from './bend';
 import { sceneRefs } from './refs';
 import { crumbGeometry, sealGeometries } from './seal';
-import { makeCanvas, ctx2d, toTexture } from './textures';
+import { makeCanvas, ctx2d, softBlur, toTexture } from './textures';
 import { sfx } from '../audio';
 
 const W = ENVELOPE.w;
@@ -23,12 +23,11 @@ const CRUMBS = 14;
 function shadowTexture() {
   const c = makeCanvas(256, 256);
   const g = ctx2d(c);
-  g.filter = 'blur(18px)';
   g.fillStyle = 'rgba(0,0,0,1)';
   g.beginPath();
-  g.roundRect(48, 56, 160, 144, 18);
+  g.roundRect(52, 60, 152, 136, 18);
   g.fill();
-  return toTexture(c);
+  return toTexture(softBlur(c, 12));
 }
 
 function flapHalfWidth(t: number) {

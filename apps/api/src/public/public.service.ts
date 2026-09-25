@@ -34,8 +34,9 @@ import { events, files, forms, responses, type FormRow } from '../db/schema';
 import { FilesService, toFileRef } from '../files/files.service';
 import { matchesAccept, resolveMime } from '../files/upload';
 import { publicCacheKey } from '../forms/forms.service';
-import { computeAvailability, toPublicForm, type Availability } from '../forms/serialize';
+import { computeAvailability, liveRow, toPublicForm, type Availability } from '../forms/serialize';
 import { RedisService } from '../redis/redis.service';
+import { WebhooksService } from '../webhooks/webhooks.service';
 
 const CACHE_TTL_SEC = 30;
 const MAX_DURATION_MS = 7 * 24 * 3600 * 1000;
@@ -84,6 +85,7 @@ export class PublicService {
     private readonly auth: AuthService,
     private readonly config: AppConfig,
     private readonly filesSvc: FilesService,
+    private readonly webhooks: WebhooksService,
   ) {}
 
   private get db() {
@@ -94,7 +96,8 @@ export class PublicService {
     const s = slug.trim().toLowerCase();
     if (!s || s.length > 100) return undefined;
     const [row] = await this.db.select().from(forms).where(eq(forms.slug, s)).limit(1);
-    return row;
+    // respondents always get the published snapshot, never the work-in-progress draft
+    return row ? liveRow(row) : undefined;
   }
 
   private async responseCount(formId: string): Promise<number> {
@@ -113,9 +116,9 @@ export class PublicService {
 
   async getForm(slug: string, preview: boolean, req: Request): Promise<{ form: PublicForm; cacheable: boolean }> {
     if (preview && (await this.auth.isAuthenticated(req))) {
-      const row = UUID_RE.test(slug)
-        ? (await this.db.select().from(forms).where(eq(forms.id, slug)).limit(1))[0]
-        : await this.findBySlug(slug);
+      // previews show the draft being edited
+      const s = slug.trim().toLowerCase();
+      const row = (await this.db.select().from(forms).where(UUID_RE.test(slug) ? eq(forms.id, slug) : eq(forms.slug, s)).limit(1))[0];
       if (!row) throw new NotFoundException('Form not found');
       return { form: toPublicForm(row, await this.availability(row, true)), cacheable: false };
     }
@@ -211,6 +214,7 @@ export class PublicService {
       locale: clampStr(body.locale, 40),
       screen: clampStr(body.screen, 40),
       durationMs: durationFrom(body.startedAt, now),
+      formVersion: row.liveVersion || undefined,
       sessionId: body.sessionId,
     };
     for (const k of Object.keys(meta) as (keyof ResponseMeta)[]) if (meta[k] === undefined) delete meta[k];
@@ -225,7 +229,8 @@ export class PublicService {
         ip: info.ip ?? null,
         countryCode: info.countryCode ?? null,
       })
-      .returning({ id: responses.id });
+      .returning();
+    this.webhooks.dispatch(row, saved);
 
     await this.insertEvent(row.id, 'submit', body.sessionId, info, { referrer: body.referrer }).catch((e) =>
       this.logger.warn(`could not record submit event: ${(e as Error).message}`),

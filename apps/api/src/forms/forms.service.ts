@@ -14,6 +14,9 @@ import {
   type FormSettings,
   type FormSummary,
   type FormTheme,
+  type FormVersionSummary,
+  type EnvironmentKey,
+  isInputField,
 } from '@formgl/shared';
 import {
   BadRequestException,
@@ -27,10 +30,10 @@ import { and, count, desc, eq, ne, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { UUID_RE } from '../common/validation';
 import { DbService } from '../db/db.service';
-import { events, files, forms, responses, type FormRow } from '../db/schema';
+import { events, files, formVersions, forms, responses, type FormRow } from '../db/schema';
 import { REDIS_PREFIX, RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
-import { toFormDoc } from './serialize';
+import { hashSnapshot, hasUnpublishedChanges, snapshotOf, toFormDoc } from './serialize';
 
 export const publicCacheKey = (slug: string) => `${REDIS_PREFIX}pf:${slug}`;
 
@@ -57,7 +60,7 @@ export const PatchFormBody = z.object({
   settings: z.record(z.unknown()).nullable().optional(),
 });
 
-export const PublishBody = z.object({ slug: z.string().max(200).nullable().optional() });
+export const PublishBody = z.object({ slug: z.string().max(200).nullable().optional(), note: z.string().max(300).nullable().optional() });
 
 const LIMITS = { fields: 2_000_000, theme: 64_000, settings: 256_000 };
 const byteLen = (v: unknown) => Buffer.byteLength(JSON.stringify(v ?? null), 'utf8');
@@ -119,15 +122,48 @@ export class FormsService {
         createdAt: forms.createdAt,
         updatedAt: forms.updatedAt,
         publishedAt: forms.publishedAt,
+        liveVersion: forms.liveVersion,
+        liveHash: forms.liveHash,
+        live: forms.live,
+        pinned: forms.pinned,
+        fields: forms.fields,
+        settings: forms.settings,
+        description: forms.description,
         responseCount: sql<number>`coalesce(${rc.n}, 0)::int`,
         viewCount: sql<number>`coalesce(${vc.n}, 0)::int`,
       })
       .from(forms)
       .leftJoin(rc, eq(rc.formId, forms.id))
       .leftJoin(vc, eq(vc.formId, forms.id))
-      .orderBy(desc(forms.updatedAt));
+      .orderBy(desc(forms.pinned), desc(forms.updatedAt));
+    // responses per day over the last two weeks, for the sparklines
+    const since = new Date(Date.now() - 13 * 86_400_000);
+    since.setUTCHours(0, 0, 0, 0);
+    const daily = await this.db
+      .select({
+        formId: responses.formId,
+        day: sql<string>`to_char(date_trunc('day', ${responses.createdAt} at time zone 'UTC'), 'YYYY-MM-DD')`,
+        n: count(),
+      })
+      .from(responses)
+      .where(sql`${responses.createdAt} >= ${since}`)
+      .groupBy(responses.formId, sql`2`);
+    const last = await this.db
+      .select({ formId: responses.formId, at: sql<Date>`max(${responses.createdAt})` })
+      .from(responses)
+      .groupBy(responses.formId);
+    const lastBy = new Map(last.map((l) => [l.formId, l.at]));
+    const days = Array.from({ length: 14 }, (_, i) => new Date(since.getTime() + i * 86_400_000).toISOString().slice(0, 10));
+    const sparkBy = new Map<string, number[]>();
+    for (const d of daily) {
+      const arr = sparkBy.get(d.formId) ?? new Array(14).fill(0);
+      const i = days.indexOf(d.day);
+      if (i >= 0) arr[i] = Number(d.n);
+      sparkBy.set(d.formId, arr);
+    }
     return rows.map((r) => {
       const t = withThemeDefaults(r.theme);
+      const lastAt = lastBy.get(r.id);
       return {
         id: r.id,
         slug: r.slug,
@@ -144,9 +180,72 @@ export class FormsService {
           loaderColor: t.loaderColor,
           paperColor: t.paperColor,
           logoUrl: t.logoUrl,
+          environment: t.environment,
+          accentColor: t.accentColor,
         },
+        liveVersion: r.liveVersion,
+        hasUnpublishedChanges: hasUnpublishedChanges(r as unknown as FormRow),
+        pinned: r.pinned,
+        lastResponseAt: lastAt ? new Date(lastAt).toISOString() : null,
+        spark: sparkBy.get(r.id) ?? new Array(14).fill(0),
       };
     });
+  }
+
+  /* ───────────── versions ───────────── */
+
+  async versions(id: string): Promise<FormVersionSummary[]> {
+    const row = await this.getRow(id);
+    const rows = await this.db
+      .select()
+      .from(formVersions)
+      .where(eq(formVersions.formId, id))
+      .orderBy(desc(formVersions.version))
+      .limit(100);
+    return rows.map((v) => ({
+      id: v.id,
+      version: v.version,
+      title: v.snapshot.title,
+      note: v.note ?? undefined,
+      fieldCount: (v.snapshot.fields ?? []).length,
+      questionCount: (v.snapshot.fields ?? []).filter((f) => isInputField(f.type)).length,
+      environment: (withThemeDefaults(v.snapshot.theme).environment ?? 'park') as EnvironmentKey,
+      createdAt: v.createdAt.toISOString(),
+      live: row.status !== 'draft' && v.version === row.liveVersion,
+    }));
+  }
+
+  /** copy an old version into the draft (respondents are unaffected until it is published) */
+  async restoreVersion(id: string, versionId: string): Promise<FormDoc> {
+    const current = await this.getRow(id);
+    const [v] = await this.db.select().from(formVersions).where(and(eq(formVersions.id, versionId), eq(formVersions.formId, id))).limit(1);
+    if (!v) throw new NotFoundException('Version not found');
+    const snap = v.snapshot;
+    const [row] = await this.db
+      .update(forms)
+      .set({ title: snap.title, description: snap.description, fields: snap.fields, theme: snap.theme, settings: snap.settings, updatedAt: new Date() })
+      .where(eq(forms.id, current.id))
+      .returning();
+    return toFormDoc(row);
+  }
+
+  /** throw away draft edits: the draft becomes the live version again */
+  async discardChanges(id: string): Promise<FormDoc> {
+    const current = await this.getRow(id);
+    if (!current.live) throw new BadRequestException('This form has never been published');
+    const l = current.live;
+    const [row] = await this.db
+      .update(forms)
+      .set({ title: l.title, description: l.description, fields: l.fields, theme: l.theme, settings: l.settings, updatedAt: new Date() })
+      .where(eq(forms.id, id))
+      .returning();
+    return toFormDoc(row);
+  }
+
+  async setPinned(id: string, pinned: boolean): Promise<FormDoc> {
+    await this.getRow(id);
+    const [row] = await this.db.update(forms).set({ pinned }).where(eq(forms.id, id)).returning();
+    return toFormDoc(row);
   }
 
   /* ───────────── writes ───────────── */
@@ -209,7 +308,7 @@ export class FormsService {
     return toFormDoc(row);
   }
 
-  async publish(id: string, slugInput?: string | null): Promise<FormDoc> {
+  async publish(id: string, slugInput?: string | null, note?: string | null): Promise<FormDoc> {
     const current = await this.getRow(id);
     const wanted = slugInput?.trim();
     let row: FormRow | undefined;
@@ -219,19 +318,19 @@ export class FormsService {
       if (problem) throw new BadRequestException(problem);
       if (await this.slugTaken(slug, id)) throw new ConflictException('That link is already taken');
       try {
-        row = await this.setPublished(id, slug, current);
+        row = await this.setPublished(id, slug, current, note);
       } catch (e) {
         if (isUniqueViolation(e)) throw new ConflictException('That link is already taken');
         throw e;
       }
     } else if (!current.slug.startsWith('draft-')) {
       // previously published: keep the link people already have
-      row = await this.setPublished(id, current.slug, current);
+      row = await this.setPublished(id, current.slug, current, note);
     } else {
       for (let attempt = 0; attempt < 5 && !row; attempt++) {
         const slug = await this.freeRandomSlug();
         try {
-          row = await this.setPublished(id, slug, current);
+          row = await this.setPublished(id, slug, current, note);
         } catch (e) {
           if (!isUniqueViolation(e)) throw e;
         }
@@ -242,13 +341,28 @@ export class FormsService {
     return toFormDoc(row);
   }
 
-  private async setPublished(id: string, slug: string, current: FormRow): Promise<FormRow> {
+  private async setPublished(id: string, slug: string, current: FormRow, note?: string | null): Promise<FormRow> {
     const now = new Date();
+    const snap = snapshotOf(current);
+    const hash = hashSnapshot(snap);
+    const unchanged = current.live && (current.liveHash ?? hashSnapshot(current.live)) === hash;
+    // publishing unchanged content (e.g. re-opening a closed form) does not create a new version
+    const version = unchanged ? current.liveVersion : (current.liveVersion ?? 0) + 1;
     const [row] = await this.db
       .update(forms)
-      .set({ slug, status: 'published', publishedAt: current.publishedAt ?? now, updatedAt: now })
+      .set({
+        slug,
+        status: 'published',
+        publishedAt: current.publishedAt ?? now,
+        updatedAt: now,
+        live: snap,
+        liveHash: hash,
+        liveVersion: version,
+        livePublishedAt: unchanged ? current.livePublishedAt : now,
+      })
       .where(eq(forms.id, id))
       .returning();
+    if (!unchanged) await this.db.insert(formVersions).values({ formId: id, version, snapshot: snap, note: note?.trim() || null });
     return row;
   }
 

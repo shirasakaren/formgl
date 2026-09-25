@@ -101,9 +101,28 @@ bokeh. Admins also choose the colours, paper type, fonts, particles, wind streng
 **Sound.** A procedural WebAudio soundscape: wind in the leaves and distant birds, plus paper, wax and pen sounds
 for each interaction. It can be muted, and the choice is remembered. Admins can add their own music URL.
 
-**Performance.** The scene has quality tiers (low, medium, high), picked from the device and adjusted live with a
-performance monitor. While the reader is on the letter, the scene renders at about 30 fps and lower resolution.
-The pixel ratio is capped. Force a tier with `?quality=low|medium|high`.
+**Performance.** Everything is baked before the scene is shown, and nothing heavy happens after:
+
+- **Textures are baked off the main thread.** The procedural textures (wood, paper, wax seal, gravel, bark, sand,
+  wallpaper, wicker…) are painted in a pool of Web Workers on `OffscreenCanvas` and sent back as `ImageBitmap`s
+  (`scene/bake/`). Results are cached in IndexedDB, so a returning visitor's textures load in a fraction of a
+  second. Only the text-bearing textures (envelope title, letter face) are drawn on the page, one per frame.
+- **The GPU is warmed up during loading** (`scene/Warmup.tsx`): every texture is uploaded, and every shader
+  program is compiled and linked a little per frame — for the exact render target and tone mapping it will be
+  used with, including hidden props (the paper plane, the reply balloon) and each post-processing effect. With
+  `KHR_parallel_shader_compile` this happens on the driver's threads. Nothing compiles once the scene is visible.
+- **The scene doesn't render while the loader is up**, except for the warm-up's frames, so the loading screen
+  stays smooth. Its main motion is compositor-only (transform animations), and the progress bar eases and
+  creeps instead of jumping.
+- **Baked lighting.** The reflection environment is a PMREM map baked once at mount. Shadow maps are not
+  re-rendered every frame: they refresh only when something that casts a shadow moves, plus at a low rate in
+  worlds with swaying casters.
+- **Steady frame rate.** Rendering is capped at 60 fps (so 120/144 Hz screens don't double the work) and 30 fps
+  while reading. Resolution follows a pixel budget per quality tier. Under sustained load only the resolution
+  steps down, never the quality tier, because switching tiers would rebuild the world.
+- **Quality is chosen once, before loading,** from the GPU name, memory and cores. Only strong GPUs get *high*
+  (AO, SMAA, real glass refraction). Force a tier with `?quality=low|medium|high`, and add `?perf` to log bake
+  and warm-up timings.
 
 **Accessibility & devices.**
 

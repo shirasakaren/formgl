@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo } from 'react';
-import { Environment, Lightformer } from '@react-three/drei';
+import { Lightformer } from '@react-three/drei';
+import { BakedEnvironment } from '../../common/BakedEnvironment';
 import * as THREE from 'three';
 import type { PublicForm } from '@formgl/shared';
 import { useExperience, type Quality } from '../../../store';
@@ -63,6 +64,8 @@ export default function AtelierWorld({ form, assets, quality, onOpen }: { form: 
   }, []);
   useEffect(() => {
     sceneRefs.cam = atelierCam();
+    sceneRefs.shadowRate = 12;
+    sceneRefs.shadowDirty = true;
   }, []);
   const DIST = 9;
   const shadowSize = quality === 'low' ? 1024 : 2048;
@@ -94,12 +97,12 @@ export default function AtelierWorld({ form, assets, quality, onOpen }: { form: 
       <directionalLight color={preset.skyHorizon} intensity={0.9} position={[0.1, 1.6, -2.5]} />
       <directionalLight color="#ffe9cf" intensity={0.85} position={[0.6, 1.8, 3]} />
       <hemisphereLight args={['#f6efe4', '#7a5a3c', 0.42]} />
-      <Environment resolution={64} frames={1} environmentIntensity={0.45}>
+      <BakedEnvironment intensity={0.45}>
         <Lightformer form="rect" intensity={3.2} color={preset.skyHorizon} scale={[1.1, 1.2, 1]} position={[0, 1.5, -0.9]} />
         <Lightformer form="rect" intensity={0.8} color="#f3e6d2" scale={[8, 3, 1]} position={[0, 1.4, 4]} rotation={[0, Math.PI, 0]} />
         <Lightformer form="rect" intensity={0.5} color="#efe2cc" scale={[6, 6, 1]} position={[0, 3, 0]} rotation={[Math.PI / 2, 0, 0]} />
         <Lightformer form="rect" intensity={0.4} color="#e7d6bd" scale={[4, 3, 1]} position={[-2, 1.2, 0.5]} rotation={[0, Math.PI / 2, 0]} />
-      </Environment>
+      </BakedEnvironment>
       <Room assets={assets} preset={preset} quality={quality} />
       <Curtains assets={assets} preset={preset} quality={quality} />
       <Desk assets={assets} quality={quality} accent={t.accentColor} />

@@ -1,12 +1,10 @@
-'use client';
 import * as THREE from 'three';
-import type { EnvAssetContext, EnvStep } from './assets';
 import { clamp01, hexToRgb, mulberry32, shade, smoothstep, ValueNoise } from './noise';
 import { barkTextures, ctx2d, makeCanvas, normalFromHeight, toTexture, woodTextures } from './textures';
 
 /* ───────────────────────── seaside ───────────────────────── */
 
-function sandTextures(seed = 4, size = 512) {
+export function sandTextures(seed = 4, size = 512) {
   const n = new ValueNoise(seed);
   const c = makeCanvas(size, size);
   const g = ctx2d(c);
@@ -38,7 +36,7 @@ function sandTextures(seed = 4, size = 512) {
   return { map: toTexture(c, { wrap: true }), normalMap: toTexture(nm, { srgb: false, wrap: true }) };
 }
 
-function corkTexture(size = 256) {
+export function corkTexture(size = 256) {
   const c = makeCanvas(size, size);
   const g = ctx2d(c);
   const r = mulberry32(8);
@@ -53,7 +51,7 @@ function corkTexture(size = 256) {
   return toTexture(c, { wrap: true });
 }
 
-function shellTexture(size = 256) {
+export function shellTexture(size = 256) {
   const c = makeCanvas(size, size);
   const g = ctx2d(c);
   const grad = g.createLinearGradient(0, 0, 0, size);
@@ -81,7 +79,7 @@ function shellTexture(size = 256) {
 
 /* ───────────────────────── atelier ───────────────────────── */
 
-function wallpaperTexture(base: string, size = 512) {
+export function wallpaperTexture(base: string, size = 512) {
   const c = makeCanvas(size, size);
   const g = ctx2d(c);
   g.fillStyle = base;
@@ -118,7 +116,7 @@ function wallpaperTexture(base: string, size = 512) {
   return toTexture(c, { wrap: true });
 }
 
-function sheerTexture(size = 256) {
+export function sheerTexture(size = 256) {
   // vertical weave + soft gathered folds; used with alpha for sheer curtains
   const c = makeCanvas(size, size);
   const g = ctx2d(c);
@@ -137,7 +135,7 @@ function sheerTexture(size = 256) {
   return t;
 }
 
-function bookCovers(size = 256) {
+export function bookCovers(size = 256) {
   const cols = ['#6b2d3a', '#2f4f5f', '#5d6b3a', '#8a6443', '#2b2320', '#b0835a'];
   const c = makeCanvas(size, size * cols.length);
   const g = ctx2d(c);
@@ -164,7 +162,7 @@ function bookCovers(size = 256) {
   return toTexture(c);
 }
 
-function floorTexture() {
+export function floorTexture() {
   // warm oak boards: reuse the wood generator, laid in planks
   const w = woodTextures(31, '#b98a5c', '#7c5334');
   return w;
@@ -172,7 +170,7 @@ function floorTexture() {
 
 /* ───────────────────────── skies ───────────────────────── */
 
-function wickerTexture(size = 512) {
+export function wickerTexture(size = 512) {
   const c = makeCanvas(size, size);
   const g = ctx2d(c);
   g.fillStyle = '#a57b4c';
@@ -203,7 +201,7 @@ function wickerTexture(size = 512) {
   return { map: toTexture(c, { wrap: true }), normalMap: toTexture(nm, { srgb: false, wrap: true }) };
 }
 
-function stripeTexture(colors: string[], size = 512) {
+export function stripeTexture(colors: string[], size = 512) {
   const c = makeCanvas(size, 64);
   const g = ctx2d(c);
   const w = size / colors.length;
@@ -214,7 +212,7 @@ function stripeTexture(colors: string[], size = 512) {
   return toTexture(c, { wrap: true });
 }
 
-function cloudPuff(size = 256) {
+export function cloudPuff(size = 256) {
   // soft, lumpy cloud billboard: overlapping radial discs (alpha) — no canvas filter, it is very slow on some GPUs
   const c = makeCanvas(size, size);
   const g = ctx2d(c);
@@ -236,52 +234,5 @@ function cloudPuff(size = 256) {
   }
   return toTexture(c);
 }
-
-/* ───────────────────────── registry ───────────────────────── */
-
-export const ENV_TEXTURES: Record<string, (ctx: EnvAssetContext) => EnvStep[]> = {
-  seaside: ({ out }) => [
-    ['Smoothing the wet sand', () => {
-      const s = sandTextures(4);
-      out.env.sand = s.map;
-      out.env.sandNormal = s.normalMap;
-    }],
-    ['Washing the sea glass', () => {
-      out.env.cork = corkTexture();
-      out.env.shell = shellTexture();
-      const d = barkTextures(44);
-      out.env.drift = d.map;
-      out.env.driftNormal = d.normalMap;
-    }],
-  ],
-  atelier: ({ form, out }) => [
-    ['Dusting the writing desk', () => {
-      const w = woodTextures(17, '#a8744a', '#5e3a22');
-      out.env.desk = w.map;
-      out.env.deskNormal = w.normalMap;
-      out.env.deskRough = w.roughnessMap;
-      const f = floorTexture();
-      out.env.floor = f.map;
-      out.env.floorNormal = f.normalMap;
-    }],
-    ['Hanging the curtains', () => {
-      out.env.wallpaper = wallpaperTexture(shade(form.theme.envelopeColor, 0.05));
-      out.env.sheer = sheerTexture();
-      out.env.books = bookCovers();
-    }],
-  ],
-  skies: ({ out }) => [
-    ['Weaving the basket', () => {
-      const w = wickerTexture();
-      out.env.wicker = w.map;
-      out.env.wickerNormal = w.normalMap;
-    }],
-    ['Inflating the balloons', () => {
-      out.env.stripes = stripeTexture(['#f2c6d4', '#fdf2e6', '#b8d8e4', '#fdf2e6', '#f6d98e', '#fdf2e6']);
-      out.env.stripes2 = stripeTexture(['#c2577a', '#f7e3c8', '#c2577a', '#f7e3c8']);
-      out.env.cloud = cloudPuff();
-    }],
-  ],
-};
 
 export { smoothstep };

@@ -7,7 +7,7 @@ import { sfx } from '../../../audio';
 import type { SceneAssets } from '../../assets';
 import { sceneRefs } from '../../refs';
 import { sealGeometries } from '../../seal';
-import { ctx2d, makeCanvas, toTexture } from '../../textures';
+import { ctx2d, makeCanvas, softBlur, toTexture } from '../../textures';
 import { sandY, shoreUniforms } from './shore';
 
 const PROFILE: Array<[number, number]> = [
@@ -32,12 +32,11 @@ function orient(q: THREE.Quaternion, axis: THREE.Vector3, roll: number) {
 function shadowTex() {
   const c = makeCanvas(256, 128);
   const g = ctx2d(c);
-  g.filter = 'blur(14px)';
   g.fillStyle = '#000';
   g.beginPath();
-  g.ellipse(128, 64, 96, 26, 0, 0, Math.PI * 2);
+  g.ellipse(128, 64, 90, 22, 0, 0, Math.PI * 2);
   g.fill();
-  return toTexture(c);
+  return toTexture(softBlur(c, 10));
 }
 
 export const BOTTLE_REST = {
@@ -54,8 +53,9 @@ export function Bottle({ assets, sealColor, quality, onOpen }: { assets: SceneAs
 
   const res = useMemo(() => {
     const geo = new THREE.LatheGeometry(PROFILE.map(([r, y]) => new THREE.Vector2(r, y)), 48);
+    // real refraction (transmission) re-renders the whole scene every frame: high quality only
     const glass =
-      quality === 'low'
+      quality !== 'high'
         ? new THREE.MeshPhysicalMaterial({ color: '#cfe8e0', roughness: 0.05, metalness: 0, transparent: true, opacity: 0.32, clearcoat: 1, envMapIntensity: 1.4, side: THREE.DoubleSide, depthWrite: false })
         : new THREE.MeshPhysicalMaterial({
             color: '#e4f4ef',

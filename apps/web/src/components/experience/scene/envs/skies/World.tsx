@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo } from 'react';
-import { Environment, Lightformer } from '@react-three/drei';
+import { Lightformer } from '@react-three/drei';
+import { BakedEnvironment } from '../../common/BakedEnvironment';
 import * as THREE from 'three';
 import type { PublicForm } from '@formgl/shared';
 import type { Quality } from '../../../store';
@@ -70,6 +71,8 @@ export default function SkiesWorld({ form, assets, quality, onOpen }: { form: Pu
   }, []);
   useEffect(() => {
     sceneRefs.cam = skiesCam();
+    sceneRefs.shadowRate = 0;
+    sceneRefs.shadowDirty = true;
   }, []);
   const shadowSize = quality === 'low' ? 1024 : 2048;
   const sunArr = useMemo(() => SUN_DIR.toArray() as [number, number, number], []);
@@ -101,12 +104,12 @@ export default function SkiesWorld({ form, assets, quality, onOpen }: { form: Pu
       <directionalLight color="#f6e3ea" intensity={0.6} position={[-0.5, -1, 1.5]} />
       {/* warm light on the letter from our side (the sun is ahead of us) */}
       <directionalLight color="#ffeede" intensity={1.1} position={[0.4, 1.2, 3]} />
-      <Environment resolution={64} frames={1} environmentIntensity={0.6}>
+      <BakedEnvironment intensity={0.6}>
         <Lightformer form="rect" intensity={1.3} color={preset.skyTop} scale={[40, 40, 1]} position={[0, 20, 0]} rotation={[Math.PI / 2, 0, 0]} />
         <Lightformer form="rect" intensity={1.4} color={preset.skyHorizon} scale={[80, 10, 1]} position={[0, 0, -25]} />
         <Lightformer form="rect" intensity={1.1} color="#f1e2ee" scale={[80, 80, 1]} position={[0, -15, 0]} rotation={[-Math.PI / 2, 0, 0]} />
         <Lightformer form="circle" intensity={9} color={preset.sunGlow} scale={4} position={[SUN_DIR.x * 20, SUN_DIR.y * 20, SUN_DIR.z * 20]} target={[0, 0, 0]} />
-      </Environment>
+      </BakedEnvironment>
       <CloudFloor lit="#ffffff" shade="#a996cf" horizon={preset.skyHorizon} />
       <Clouds assets={assets} quality={quality} lit="#ffffff" shade="#b9a7d8" horizon={preset.skyHorizon} sunDir={SUN_DIR} />
       <FarBalloons assets={assets} />

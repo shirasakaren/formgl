@@ -144,7 +144,7 @@ export function Ground({ assets, preset, quality }: { assets: SceneAssets; prese
     const lawnFar = new THREE.MeshBasicMaterial({ map: farMap, color: new THREE.Color(preset.lawnFar).multiplyScalar(1.05), fog: true });
 
     // grass blades
-    const count = quality === 'low' ? 5000 : quality === 'medium' ? 14000 : 26000;
+    const count = quality === 'low' ? 4000 : quality === 'medium' ? 10000 : 18000;
     const rnd = mulberry32(12);
     const blade = grassGeometry();
     const grassMat = windMaterial(new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.85, side: THREE.DoubleSide }), 1, true);

@@ -1,4 +1,3 @@
-'use client';
 import * as THREE from 'three';
 import type { PaperKind } from '@formgl/shared';
 import { clamp01, hexToRgb, mulberry32, shade, smoothstep, ValueNoise } from './noise';
@@ -6,6 +5,8 @@ import { clamp01, hexToRgb, mulberry32, shade, smoothstep, ValueNoise } from './
 /* ─────────────────────────── canvas helpers ─────────────────────────── */
 
 export function makeCanvas(w: number, h: number): HTMLCanvasElement {
+  // inside the bake worker there is no DOM: an OffscreenCanvas has the same 2D API
+  if (typeof document === 'undefined') return new OffscreenCanvas(w, h) as unknown as HTMLCanvasElement;
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
@@ -22,6 +23,8 @@ export function toTexture(
 ): THREE.CanvasTexture {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = opts.srgb === false ? THREE.NoColorSpace : THREE.SRGBColorSpace;
+  // baked ImageBitmaps arrive already flipped (WebGL ignores UNPACK_FLIP_Y for bitmaps)
+  if (typeof ImageBitmap !== 'undefined' && (c as unknown) instanceof ImageBitmap) t.flipY = false;
   if (opts.wrap || opts.repeat) {
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
   }
@@ -79,6 +82,54 @@ export function heightFromCanvas(c: HTMLCanvasElement): Float32Array {
   const out = new Float32Array(c.width * c.height);
   for (let i = 0; i < out.length; i++) out[i] = (data[i * 4] + data[i * 4 + 1] + data[i * 4 + 2]) / 765;
   return out;
+}
+
+/** cheap soft blur: shrink and scale back up (canvas `filter` is extremely slow on some GPUs / in software) */
+export function softBlur(src: HTMLCanvasElement, factor = 8): HTMLCanvasElement {
+  const w = Math.max(1, Math.round(src.width / factor));
+  const h = Math.max(1, Math.round(src.height / factor));
+  const small = makeCanvas(w, h);
+  const sg = ctx2d(small);
+  sg.imageSmoothingEnabled = true;
+  sg.imageSmoothingQuality = 'high';
+  sg.drawImage(src, 0, 0, w, h);
+  const out = makeCanvas(src.width, src.height);
+  const og = ctx2d(out);
+  og.imageSmoothingEnabled = true;
+  og.imageSmoothingQuality = 'high';
+  og.drawImage(small, 0, 0, src.width, src.height);
+  return out;
+}
+
+/** separable box blur of a float field, `passes` times (≈ gaussian) */
+export function blurField(src: Float32Array, w: number, h: number, r: number, passes = 2): Float32Array {
+  const a = Float32Array.from(src);
+  const b = new Float32Array(src.length);
+  const k = 1 / (2 * r + 1);
+  const cx = (x: number) => (x < 0 ? 0 : x >= w ? w - 1 : x);
+  const cy = (y: number) => (y < 0 ? 0 : y >= h ? h - 1 : y);
+  for (let p = 0; p < passes; p++) {
+    // horizontal a → b
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      let acc = 0;
+      for (let x = -r; x <= r; x++) acc += a[row + cx(x)];
+      for (let x = 0; x < w; x++) {
+        b[row + x] = acc * k;
+        acc += a[row + cx(x + r + 1)] - a[row + cx(x - r)];
+      }
+    }
+    // vertical b → a
+    for (let x = 0; x < w; x++) {
+      let acc = 0;
+      for (let y = -r; y <= r; y++) acc += b[cy(y) * w + x];
+      for (let y = 0; y < h; y++) {
+        a[y * w + x] = acc * k;
+        acc += b[cy(y + r + 1) * w + x] - b[cy(y - r) * w + x];
+      }
+    }
+  }
+  return a;
 }
 
 /* ─────────────────────────── wood ─────────────────────────── */
@@ -342,13 +393,14 @@ export function envelopePocketCanvas(o: EnvelopeTextOpts): HTMLCanvasElement {
   const drawEdge = (pts: Array<[number, number]>, shadow: number) => {
     g.save();
     g.lineJoin = 'round';
-    g.strokeStyle = `rgba(80,55,35,${shadow})`;
-    g.lineWidth = 10;
-    g.filter = 'blur(6px)';
-    g.beginPath();
-    pts.forEach(([x, y], i) => (i ? g.lineTo(x, y + 5) : g.moveTo(x, y + 5)));
-    g.stroke();
-    g.filter = 'none';
+    // soft shadow under the flap edge: a few widening, fading strokes (no canvas filter)
+    for (const [wd, a] of [[22, 0.18], [15, 0.28], [9, 0.4], [4, 0.5]] as const) {
+      g.strokeStyle = `rgba(80,55,35,${shadow * a})`;
+      g.lineWidth = wd;
+      g.beginPath();
+      pts.forEach(([x, y], i) => (i ? g.lineTo(x, y + 5) : g.moveTo(x, y + 5)));
+      g.stroke();
+    }
     g.strokeStyle = 'rgba(70,50,30,0.35)';
     g.lineWidth = 1.6;
     g.beginPath();
@@ -479,31 +531,15 @@ export interface SealMaps {
  * Builds normal / cavity / roughness maps for the wax seal from the admin's logo
  * (or a monogram). The stamp impression covers the inner 70% of the seal.
  */
-export function sealMaps(opts: { logo?: HTMLImageElement | null; monogram: string; font: string }): SealMaps {
-  const S = 512;
-  const h = makeCanvas(S, S);
-  const g = ctx2d(h);
-  const n = new ValueNoise(99);
-  const cx = S / 2;
-  const R = S * 0.36; // impression radius
-  // base: mid-grey wax body with lumpy noise
-  const img = g.createImageData(S, S);
-  for (let y = 0; y < S; y++) {
-    for (let x = 0; x < S; x++) {
-      const d = Math.hypot(x - cx, y - cx) / R;
-      let v = 0.5 + (n.fbm(x / 60, y / 60, 4) - 0.5) * 0.35;
-      // rim of pushed wax just outside the stamp
-      v += Math.exp(-Math.pow((d - 1.07) * 7, 2)) * 0.35;
-      // stamp floor
-      if (d < 1) v = 0.28 + (n.fbm(x / 90, y / 90, 2) - 0.5) * 0.03;
-      const i = (y * S + x) * 4;
-      img.data[i] = img.data[i + 1] = img.data[i + 2] = v * 255;
-      img.data[i + 3] = 255;
-    }
-  }
-  g.putImageData(img, 0, 0);
+export function sealMaps(opts: { logo?: HTMLImageElement | ImageBitmap | null; monogram: string; font: string }): SealMaps {
+  return sealMapsFromRelief(sealRelief(opts));
+}
 
-  // relief drawn in lighter grey (raised) inside the impression
+/** The raised design of the stamp (logo or monogram, beads, laurels) — white on black. Cheap: drawing only. */
+export function sealRelief(opts: { logo?: HTMLImageElement | ImageBitmap | null; monogram: string; font: string }): HTMLCanvasElement {
+  const S = 512;
+  const cx = S / 2;
+  const R = S * 0.36;
   const relief = makeCanvas(S, S);
   const rg = ctx2d(relief);
   rg.fillStyle = '#000';
@@ -523,16 +559,17 @@ export function sealMaps(opts: { logo?: HTMLImageElement | null; monogram: strin
   }
   const inner = R * 0.68;
   let drewLogo = false;
-  if (opts.logo && opts.logo.naturalWidth > 0) {
+  const logo = opts.logo;
+  const lw0 = logo ? ('naturalWidth' in logo ? logo.naturalWidth : logo.width) : 0;
+  const lh0 = logo ? ('naturalHeight' in logo ? logo.naturalHeight : logo.height) : 0;
+  if (logo && lw0 > 0) {
     try {
-      const lw = opts.logo.naturalWidth;
-      const lh = opts.logo.naturalHeight;
-      const scale = (inner * 1.75) / Math.max(lw, lh);
-      const w = lw * scale;
-      const hh = lh * scale;
+      const scale = (inner * 1.75) / Math.max(lw0, lh0);
+      const w = lw0 * scale;
+      const hh = lh0 * scale;
       const tmp = makeCanvas(Math.max(1, Math.round(w)), Math.max(1, Math.round(hh)));
       const tg = ctx2d(tmp);
-      tg.drawImage(opts.logo, 0, 0, tmp.width, tmp.height);
+      tg.drawImage(logo, 0, 0, tmp.width, tmp.height);
       const td = tg.getImageData(0, 0, tmp.width, tmp.height);
       let hasAlpha = false;
       for (let i = 3; i < td.data.length; i += 16) if (td.data[i] < 240) { hasAlpha = true; break; }
@@ -575,15 +612,38 @@ export function sealMaps(opts: { logo?: HTMLImageElement | null; monogram: strin
       }
     }
   }
-  // soften relief then composite as raised areas
-  g.save();
-  g.filter = 'blur(2.5px)';
-  g.globalCompositeOperation = 'lighter';
-  g.globalAlpha = 0.62;
-  g.drawImage(relief, 0, 0);
-  g.restore();
+  return relief;
+}
 
-  const height = heightFromCanvas(h);
+/**
+ * Normal / cavity / roughness maps of the wax seal from its relief (the heavy part:
+ * runs in the bake worker). The stamp impression covers the inner 70% of the seal.
+ */
+export function sealMapsFromRelief(relief: HTMLCanvasElement | ImageBitmap): SealMaps {
+  const S = 512;
+  const n = new ValueNoise(99);
+  const cx = S / 2;
+  const R = S * 0.36; // impression radius
+  // relief luminance, softened
+  const rc = makeCanvas(S, S);
+  const rcg = ctx2d(rc);
+  rcg.drawImage(relief as CanvasImageSource, 0, 0, S, S);
+  const rd = rcg.getImageData(0, 0, S, S).data;
+  const rf = new Float32Array(S * S);
+  for (let i = 0; i < rf.length; i++) rf[i] = rd[i * 4] / 255;
+  const soft = blurField(rf, S, S, 2, 2);
+  // height: lumpy wax body, pushed-up rim, flat stamp floor, raised design
+  const height = new Float32Array(S * S);
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const d = Math.hypot(x - cx, y - cx) / R;
+      let v = 0.5 + (n.fbm(x / 60, y / 60, 4) - 0.5) * 0.35;
+      v += Math.exp(-Math.pow((d - 1.07) * 7, 2)) * 0.35;
+      if (d < 1) v = 0.28 + (n.fbm(x / 90, y / 90, 2) - 0.5) * 0.03;
+      const i = y * S + x;
+      height[i] = Math.min(1, v + soft[i] * 0.62);
+    }
+  }
   const normal = normalFromHeight(height, S, S, 9, false);
 
   // cavity: darken recessed floor edges + outside wax slightly lighter

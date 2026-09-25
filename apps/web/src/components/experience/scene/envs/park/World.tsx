@@ -21,6 +21,8 @@ export default function ParkWorld({ form, assets, quality, onOpen }: { form: Pub
   const reduced = useExperience((s) => s.reducedMotion);
   useEffect(() => {
     sceneRefs.cam = parkCamConfig();
+    sceneRefs.shadowRate = 0;
+    sceneRefs.shadowDirty = true;
   }, []);
   return (
     <>

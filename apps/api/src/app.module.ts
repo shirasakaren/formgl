@@ -23,6 +23,8 @@ import { RedisService } from './redis/redis.service';
 import { ResponsesController } from './responses/responses.controller';
 import { ResponsesService } from './responses/responses.service';
 import { StorageService } from './storage/storage.service';
+import { WebhooksController } from './webhooks/webhooks.controller';
+import { WebhooksService } from './webhooks/webhooks.service';
 
 /** Infrastructure shared by every feature: config, postgres, redis, s3. */
 @Global()
@@ -51,6 +53,7 @@ export class CoreModule {}
     AdminUploadsController,
     FilesController,
     PublicController,
+    WebhooksController,
   ],
   providers: [
     AuthService,
@@ -60,6 +63,7 @@ export class CoreModule {}
     AnalyticsService,
     FilesService,
     PublicService,
+    WebhooksService,
     { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],

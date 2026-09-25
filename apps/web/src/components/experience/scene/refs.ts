@@ -91,6 +91,12 @@ export const sceneRefs = {
   replyFace: null as THREE.Texture | null,
   /** paints a reply face from answer lines (set by the 3D letter, which owns the paper) */
   makeReplyFace: null as null | ((lines: string[]) => THREE.Texture),
+  /** the post-processing composer (so its shaders can be compiled during loading) */
+  composer: null as unknown,
+  /** shadow map refreshes per second while idle (0 = only when casters move); set by each world */
+  shadowRate: 0,
+  /** force one shadow map refresh */
+  shadowDirty: true,
   /** world point the depth of field focuses on */
   focus: new THREE.Vector3(0.05, 0.45, 0.04),
   /** distance camera → focus, updated each frame */

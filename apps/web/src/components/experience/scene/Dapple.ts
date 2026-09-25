@@ -139,6 +139,15 @@ export class DappleMap {
     this.quadScene.add(this.quad);
   }
 
+  /** compile this mask's shaders ahead of time (the loader's warm-up links them) */
+  warm(gl: THREE.WebGLRenderer) {
+    const prev = gl.getRenderTarget();
+    gl.setRenderTarget(this.target);
+    gl.compile(this.scene, this.camera);
+    gl.compile(this.quadScene, this.camera);
+    gl.setRenderTarget(prev);
+  }
+
   update(gl: THREE.WebGLRenderer, time: number, wind: number) {
     this.material.uniforms.uTime.value = time;
     this.material.uniforms.uWind.value = wind;

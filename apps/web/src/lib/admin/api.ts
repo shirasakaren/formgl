@@ -4,7 +4,11 @@ import type {
   FormDoc,
   FormResponse,
   FormSummary,
+  FormVersionSummary,
   Paginated,
+  WebhookDeliveryDoc,
+  WebhookDoc,
+  WebhookKind,
 } from '@formgl/shared';
 
 export class ApiError extends Error {
@@ -99,7 +103,12 @@ export const api = {
     create: (body: { templateId?: string; title?: string }) => request<FormDoc>('/admin/forms', { method: 'POST', ...json(body) }),
     get: (id: string) => request<FormDoc>(`/admin/forms/${id}`),
     update: (id: string, patch: FormPatch) => request<FormDoc>(`/admin/forms/${id}`, { method: 'PATCH', ...json(patch) }),
-    publish: (id: string, slug?: string) => request<FormDoc>(`/admin/forms/${id}/publish`, { method: 'POST', ...json(slug ? { slug } : {}) }),
+    publish: (id: string, slug?: string, note?: string) =>
+      request<FormDoc>(`/admin/forms/${id}/publish`, { method: 'POST', ...json({ ...(slug ? { slug } : {}), ...(note ? { note } : {}) }) }),
+    versions: (id: string) => request<FormVersionSummary[]>(`/admin/forms/${id}/versions`),
+    restoreVersion: (id: string, vid: string) => request<FormDoc>(`/admin/forms/${id}/versions/${vid}/restore`, { method: 'POST' }),
+    discard: (id: string) => request<FormDoc>(`/admin/forms/${id}/discard`, { method: 'POST' }),
+    pin: (id: string, pinned: boolean) => request<FormDoc>(`/admin/forms/${id}/pin`, { method: 'POST', ...json({ pinned }) }),
     unpublish: (id: string) => request<FormDoc>(`/admin/forms/${id}/unpublish`, { method: 'POST' }),
     close: (id: string) => request<FormDoc>(`/admin/forms/${id}/close`, { method: 'POST' }),
     duplicate: (id: string) => request<FormDoc>(`/admin/forms/${id}/duplicate`, { method: 'POST' }),
@@ -122,6 +131,15 @@ export const api = {
       request<AnalyticsSummary>(`/admin/forms/${formId}/analytics${qs({ from, to })}`),
     events: (formId: string, params: { page?: number; pageSize?: number; type?: string }) =>
       request<Paginated<VisitEvent>>(`/admin/forms/${formId}/events${qs(params)}`),
+  },
+  webhooks: {
+    list: (formId: string) => request<WebhookDoc[]>(`/admin/forms/${formId}/webhooks`),
+    create: (formId: string, body: { url: string; kind?: WebhookKind }) => request<WebhookDoc>(`/admin/forms/${formId}/webhooks`, { method: 'POST', ...json(body) }),
+    update: (wid: string, patch: Partial<Pick<WebhookDoc, 'url' | 'kind' | 'active'>>) => request<WebhookDoc>(`/admin/webhooks/${wid}`, { method: 'PATCH', ...json(patch) }),
+    remove: (wid: string) => request<{ ok: true }>(`/admin/webhooks/${wid}`, { method: 'DELETE' }),
+    rotate: (wid: string) => request<WebhookDoc>(`/admin/webhooks/${wid}/rotate`, { method: 'POST' }),
+    test: (wid: string) => request<WebhookDeliveryDoc>(`/admin/webhooks/${wid}/test`, { method: 'POST' }),
+    deliveries: (wid: string) => request<WebhookDeliveryDoc[]>(`/admin/webhooks/${wid}/deliveries`),
   },
   upload: (file: File) => {
     const fd = new FormData();

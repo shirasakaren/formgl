@@ -20,27 +20,26 @@ import { mulberry32 } from '../scene/noise';
 import { sfx } from '../audio';
 import { progressStore, submitAnswers, SubmitError, track } from '@/lib/public/client';
 
-function usePaperBackground(color: string, kind: string) {
+function usePaperBackground(color: string, kind: string, enabled = true) {
   return useMemo(() => {
-    if (typeof document === 'undefined') return '';
+    if (typeof document === 'undefined' || !enabled) return '';
     try {
       const { color: c } = paperCanvases(color, kind as never, 5, 384);
       return c.toDataURL('image/jpeg', 0.86);
     } catch {
       return '';
     }
-  }, [color, kind]);
+  }, [color, kind, enabled]);
 }
 
 /** pre-blurred leaf shadows for the paper (animated with cheap transforms) */
-function useDappleImage() {
+function useDappleImage(enabled: boolean) {
   return useMemo(() => {
-    if (typeof document === 'undefined') return '';
+    if (typeof document === 'undefined' || !enabled) return '';
     const c = document.createElement('canvas');
     c.width = c.height = 512;
     const g = c.getContext('2d')!;
     const r = mulberry32(12);
-    g.filter = 'blur(14px)';
     for (let i = 0; i < 26; i++) {
       const x = r() * 512;
       const y = r() * 512;
@@ -61,8 +60,15 @@ function useDappleImage() {
           g.restore();
         }
     }
+    // soften by shrinking and scaling back up (a canvas blur filter is very slow)
+    const small = document.createElement('canvas');
+    small.width = small.height = 32;
+    small.getContext('2d')!.drawImage(c, 0, 0, 32, 32);
+    g.clearRect(0, 0, 512, 512);
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(small, 0, 0, 512, 512);
     return c.toDataURL('image/png');
-  }, []);
+  }, [enabled]);
 }
 
 interface Ghost {
@@ -93,8 +99,10 @@ export function LetterOverlay({ pages, onSubmitted, visible }: { pages: LetterPa
   const started = useRef(!!useExperience.getState().startedAt);
   const t = form.theme;
   const s = form.settings;
-  const paperBg = usePaperBackground(t.paperColor, t.paper);
-  const dapple = useDappleImage();
+  const webglOn = useExperience((st) => st.webgl);
+  // the flat (no-WebGL) page paints its own paper and leaf shadows; the 3D sheet doesn't need them
+  const paperBg = usePaperBackground(t.paperColor, t.paper, !webglOn);
+  const dapple = useDappleImage(!webglOn);
   const total = pages.length;
   const cur = Math.min(page, total - 1);
   const isLast = cur === total - 1;
@@ -355,15 +363,19 @@ export function LetterOverlay({ pages, onSubmitted, visible }: { pages: LetterPa
         if (f.type !== 'hidden' && !isFieldVisible(f, answers)) continue;
         if (answers[f.id] !== undefined) clean[f.id] = answers[f.id];
       }
-      await submitAnswers(slug, clean, useExperience.getState().startedAt || Date.now(), demo || preview);
+      // paint the reply sheet while the request is in flight (the sheet that flies away carries it)
+      let face: ReturnType<NonNullable<typeof sceneRefs.makeReplyFace>> | null = null;
       if (embedded) {
-        // the sheet that flies away carries what was written on it
         try {
-          sceneRefs.replyFace = sceneRefs.makeReplyFace?.(replyLines(clean)) ?? null;
-          anim.fx.reply = sceneRefs.replyFace ? 1 : 0;
+          face = sceneRefs.makeReplyFace?.(replyLines(clean)) ?? null;
         } catch {
-          /* purely decorative */
+          face = null;
         }
+      }
+      await submitAnswers(slug, clean, useExperience.getState().startedAt || Date.now(), demo || preview);
+      if (face) {
+        sceneRefs.replyFace = face;
+        anim.fx.reply = 1;
       }
       scroller.current?.scrollTo({ top: 0, behavior: 'auto' });
       onSubmitted();
@@ -506,7 +518,7 @@ export function LetterOverlay({ pages, onSubmitted, visible }: { pages: LetterPa
   if (embedded) {
     return (
       <div
-        className={`fgl-embed${visible && shown ? ' is-shown' : ''}${sending ? ' is-sending' : ''}${quality === 'low' ? ' no-blend' : ''}`}
+        className={`fgl-embed${visible && shown ? ' is-shown' : ''}${sending ? ' is-sending' : ''}${quality !== 'high' ? ' no-blend' : ''}`}
         style={vars}
         aria-hidden={!visible}
         id="fgl-letter"
