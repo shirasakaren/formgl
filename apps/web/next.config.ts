@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
     return [{ source: '/api/:path*', destination: `${API}/api/:path*` }];
   },
   images: { unoptimized: true },
+  // @ts-expect-error — not yet in the public type
+  agentRules: false,
 };
 
 export default nextConfig;
