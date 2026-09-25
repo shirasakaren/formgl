@@ -206,6 +206,21 @@ export const TEMPLATES: FormTemplate[] = [
     ],
   },
   {
+    id: 'lantern-wishes',
+    name: 'Wishes on the water',
+    category: 'Events',
+    description: 'Collect wishes, hopes and thank-yous that float off on paper lanterns — for a new year, a farewell or a festival night.',
+    title: 'Make a wish',
+    theme: { environment: 'lantern', timeOfDay: 'dusk', loaderColor: '#1c2236', sealColor: '#b5542c', accentColor: '#c8743a', paperColor: '#f8efdd', paper: 'laid', envelopeSubtitle: 'light it and let it go' },
+    settings: { fieldsPerPage: 3, greeting: 'Under the same stars,', signOff: 'May it find its way,', submitLabel: 'Release the lantern' },
+    fields: () => [
+      f('short_text', { label: 'Your name', placeholder: 'Or leave it to the stars' }),
+      f('long_text', { label: 'What do you wish for?', required: true, placeholder: 'Big or small, it floats all the same…' }),
+      f('multiple_choice', { label: 'Who is it for?', options: opts('Me', 'Someone I love', 'Everyone', 'A stranger') }),
+      f('long_text', { label: 'One thing you’re grateful for tonight' }),
+    ],
+  },
+  {
     id: 'guestbook',
     name: 'Guest book',
     category: 'Community',

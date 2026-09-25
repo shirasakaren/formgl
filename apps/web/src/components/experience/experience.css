@@ -1681,3 +1681,27 @@
 .fgl-embedded .fgl-nav { flex-wrap: nowrap !important; }
 .fgl-embedded .fgl-nav .fgl-pages { order: 0 !important; width: auto !important; margin: 0 !important; }
 .fgl-embedded .fgl-nav .fgl-btn { flex: 0 0 auto !important; width: auto !important; }
+
+/* lantern lake vignettes */
+.fgl-v-lantern .lan { animation: fgl-lan-bob 3.2s ease-in-out infinite; }
+.fgl-v-lantern .halo { transform-origin: 100px 74px; animation: fgl-glow 1.4s ease-in-out infinite alternate; }
+.fgl-v-lantern .flame { transform-origin: 100px 93px; animation: fgl-flicker 0.8s ease-in-out infinite alternate; }
+.fgl-v-lantern .ripple { transform-origin: 100px 118px; animation: fgl-lan-ripple 3.2s ease-out infinite; }
+.fgl-v-lantern .r1 { animation-delay: -1.6s; }
+@keyframes fgl-lan-bob { 0%, 100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-4px) rotate(1.5deg); } }
+@keyframes fgl-lan-ripple { from { transform: scaleX(0.7); opacity: 0.9; } to { transform: scaleX(1.25); opacity: 0; } }
+.fgl-v-moon .moon { animation: fgl-lan-bob 6s ease-in-out infinite; }
+.fgl-v-moon .shade { color: inherit; fill: var(--fgl-loader-bg, #1c2236); }
+.fgl-v-moon .star { animation: fgl-twinkle 2.4s ease-in-out infinite alternate; }
+.fgl-v-moon .s1 { animation-delay: -0.8s; }
+.fgl-v-moon .s2 { animation-delay: -1.6s; }
+@keyframes fgl-twinkle { from { opacity: 0.2; } to { opacity: 0.85; } }
+.fgl-v-fireflies .fly { animation: fgl-fly 4s ease-in-out infinite; }
+.fgl-v-fireflies .f1 { animation-delay: -0.8s; animation-duration: 5s; }
+.fgl-v-fireflies .f2 { animation-delay: -1.6s; animation-duration: 3.6s; }
+.fgl-v-fireflies .f3 { animation-delay: -2.4s; animation-duration: 4.6s; }
+.fgl-v-fireflies .f4 { animation-delay: -3.2s; animation-duration: 5.4s; }
+@keyframes fgl-fly { 0%, 100% { transform: translate(0, 0); opacity: 0.2; } 30% { opacity: 1; } 50% { transform: translate(8px, -6px); opacity: 0.9; } 75% { transform: translate(-4px, 4px); opacity: 0.15; } }
+@media (prefers-reduced-motion: reduce) {
+  .fgl-v-lantern *, .fgl-v-moon *, .fgl-v-fireflies * { animation: none !important; }
+}

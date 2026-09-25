@@ -32,11 +32,12 @@ import {
   shellTexture,
   stripeTexture,
   wallpaperTexture,
+  washiTexture,
   wickerTexture,
 } from '../envTextures';
 
 /** bump when any generator changes, so stale cached bakes are ignored */
-export const BAKE_VERSION = 3;
+export const BAKE_VERSION = 4;
 
 export const JOBS = {
   wood: (a: { seed: number; light?: string; dark?: string }) => woodTextures(a.seed, a.light, a.dark),
@@ -79,6 +80,11 @@ export const JOBS = {
     stripes2: stripeTexture(['#c2577a', '#f7e3c8', '#c2577a', '#f7e3c8']),
     cloud: cloudPuff(),
   }),
+  /* ── lantern lake ── */
+  lanternLake: () => {
+    const w = woodTextures(9, '#7d6a56', '#3b2f25');
+    return { dock: w.map, dockNormal: w.normalMap, dockRough: w.roughnessMap, washi: washiTexture() };
+  },
 };
 
 export type JobName = keyof typeof JOBS;

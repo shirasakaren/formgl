@@ -73,6 +73,7 @@ export default function SkiesWorld({ form, assets, quality, onOpen }: { form: Pu
     sceneRefs.cam = skiesCam();
     sceneRefs.shadowRate = 0;
     sceneRefs.shadowDirty = true;
+    sceneRefs.readingLight = 1;
   }, []);
   const shadowSize = quality === 'low' ? 1024 : 2048;
   const sunArr = useMemo(() => SUN_DIR.toArray() as [number, number, number], []);

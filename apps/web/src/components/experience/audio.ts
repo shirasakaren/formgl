@@ -55,11 +55,11 @@ class SoundEngine {
     return src;
   }
 
-  private kind: 'park' | 'sea' | 'room' | 'sky' = 'park';
+  private kind: 'park' | 'sea' | 'room' | 'sky' | 'night' = 'park';
   private timers: Array<ReturnType<typeof setTimeout>> = [];
 
   /** Start ambience (call from a user gesture) */
-  startAmbience(opts: { wind: number; musicUrl?: string; ambience?: 'park' | 'sea' | 'room' | 'sky' }) {
+  startAmbience(opts: { wind: number; musicUrl?: string; ambience?: 'park' | 'sea' | 'room' | 'sky' | 'night' }) {
     const ctx = this.ensure();
     if (!ctx || this.started) return;
     this.started = true;
@@ -191,6 +191,91 @@ class SoundEngine {
       this.bed(amb, 'highpass', 3000, 0.3, 0.005, { rate: 0.07, depth: 0.004 });
       this.every(2800, 6500, () => this.windChime());
       this.every(18000, 32000, () => this.burner());
+    } else if (this.kind === 'night') {
+      // still night air, crickets in the reeds, water lapping at the posts, a distant owl
+      this.bed(amb, 'lowpass', 260, 0.5, 0.025, { rate: 0.05, depth: 0.01 });
+      this.every(900, 2200, () => this.cricket());
+      this.every(2200, 4800, () => this.lap());
+      this.every(16000, 34000, () => this.owl());
+    }
+  }
+
+  private cricket() {
+    const ctx = this.ctx;
+    if (!ctx || !this.ambience) return;
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = Math.random() * 1.6 - 0.8;
+    const out = ctx.createGain();
+    out.gain.value = 0.004 + Math.random() * 0.005;
+    pan.connect(out).connect(this.ambience);
+    const f0 = 4200 + Math.random() * 900;
+    const chirps = 2 + Math.floor(Math.random() * 3);
+    let t = ctx.currentTime + 0.02;
+    for (let c = 0; c < chirps; c++) {
+      // each chirp is a quick train of pulses
+      for (let i = 0; i < 4; i++) {
+        const o = ctx.createOscillator();
+        o.frequency.value = f0;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(1, t + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.018);
+        o.connect(g).connect(pan);
+        o.start(t);
+        o.stop(t + 0.03);
+        t += 0.022;
+      }
+      t += 0.12 + Math.random() * 0.05;
+    }
+  }
+
+  private lap() {
+    const ctx = this.ctx;
+    if (!ctx || !this.ambience) return;
+    const t = ctx.currentTime;
+    const src = this.noise();
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.setValueAtTime(500 + Math.random() * 300, t);
+    f.frequency.exponentialRampToValueAtTime(220, t + 0.6);
+    f.Q.value = 2.5;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.03 + Math.random() * 0.02, t + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.0006, t + 0.7);
+    src.connect(f).connect(g).connect(this.ambience);
+    src.start(t, Math.random());
+    src.stop(t + 0.8);
+  }
+
+  private owl() {
+    const ctx = this.ctx;
+    if (!ctx || !this.ambience) return;
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = Math.random() * 1.2 - 0.6;
+    const out = ctx.createGain();
+    out.gain.value = 0.02;
+    pan.connect(out).connect(this.ambience);
+    // hoo… hoo-hoo
+    const hoots: Array<[number, number]> = [[0, 0.45], [0.8, 0.22], [1.1, 0.5]];
+    const t0 = ctx.currentTime + 0.05;
+    for (const [at, dur] of hoots) {
+      const t = t0 + at;
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(380, t);
+      o.frequency.linearRampToValueAtTime(410, t + dur * 0.3);
+      o.frequency.linearRampToValueAtTime(350, t + dur);
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 900;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(1, t + dur * 0.25);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(lp).connect(g).connect(pan);
+      o.start(t);
+      o.stop(t + dur + 0.05);
     }
   }
 

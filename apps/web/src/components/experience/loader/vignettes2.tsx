@@ -213,3 +213,61 @@ export function Kite({ ink, accent }: P) {
     </svg>
   );
 }
+
+export function LanternV({ ink, accent }: P) {
+  return (
+    <svg viewBox="0 0 200 140" className="fgl-v fgl-v-lantern" aria-hidden>
+      <path className="ripple r0" d="M50 116 Q 100 110 150 116" fill="none" stroke={ink} strokeOpacity="0.3" strokeWidth="1.2" strokeLinecap="round" />
+      <path className="ripple r1" d="M64 124 Q 100 120 136 124" fill="none" stroke={ink} strokeOpacity="0.2" strokeWidth="1.2" strokeLinecap="round" />
+      <g className="lan">
+        <circle className="halo" cx="100" cy="74" r="42" fill="#ffb35c" opacity="0.2" />
+        <rect x="80" y="54" width="40" height="46" rx="2" fill="#ffd08a" stroke={ink} strokeOpacity="0.5" strokeWidth="1.2" />
+        <rect x="80" y="54" width="40" height="46" rx="2" fill="url(#fgl-lan-g)" />
+        <line x1="100" y1="54" x2="100" y2="100" stroke={ink} strokeOpacity="0.25" />
+        <rect x="80" y="54" width="40" height="3" fill={accent} />
+        <rect x="76" y="100" width="48" height="6" rx="1" fill={ink} opacity="0.7" />
+        <path className="flame" d="M100 78 C 104 84, 104 90, 100 93 C 96 90, 96 84, 100 78 Z" fill="#fff4c8" />
+      </g>
+      <defs>
+        <radialGradient id="fgl-lan-g" cx="0.5" cy="0.72" r="0.6">
+          <stop offset="0" stopColor="#fff2c4" stopOpacity="0.9" />
+          <stop offset="1" stopColor="#e98a3a" stopOpacity="0.2" />
+        </radialGradient>
+      </defs>
+    </svg>
+  );
+}
+
+export function MoonV({ ink }: P) {
+  return (
+    <svg viewBox="0 0 200 140" className="fgl-v fgl-v-moon" aria-hidden>
+      {[
+        [40, 30, 1.4], [150, 22, 1.1], [168, 64, 1.6], [26, 78, 1], [70, 16, 1], [128, 90, 1.2],
+      ].map(([x, y, r], i) => (
+        <circle key={i} className={`star s${i % 3}`} cx={x} cy={y} r={r} fill={ink} />
+      ))}
+      <g className="moon">
+        <circle cx="100" cy="60" r="30" fill="#f4efe2" opacity="0.18" />
+        <circle cx="100" cy="60" r="22" fill="#f4efe2" />
+        <circle cx="108" cy="54" r="22" fill="currentColor" className="shade" />
+      </g>
+      <path d="M40 112 C 70 108, 130 116, 160 110" fill="none" stroke={ink} strokeOpacity="0.25" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function FirefliesV({ ink }: P) {
+  return (
+    <svg viewBox="0 0 200 140" className="fgl-v fgl-v-fireflies" aria-hidden>
+      {[60, 72, 84, 118, 130, 142].map((x, i) => (
+        <path key={x} d={`M${x} 132 C ${x - 4} 110, ${x + 3} 96, ${x - 2 + (i % 2) * 6} ${80 + (i % 3) * 8}`} fill="none" stroke={ink} strokeOpacity="0.45" strokeWidth="1.4" strokeLinecap="round" />
+      ))}
+      {Array.from({ length: 9 }, (_, i) => (
+        <g key={i} className={`fly f${i % 5}`} style={{ translate: `${40 + ((i * 53) % 120)}px ${30 + ((i * 37) % 60)}px` }}>
+          <circle r="7" fill="#f7e27a" opacity="0.25" />
+          <circle r="2.2" fill="#fff6b8" />
+        </g>
+      ))}
+    </svg>
+  );
+}

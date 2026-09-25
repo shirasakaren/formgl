@@ -202,7 +202,7 @@ export type Answers = Record<string, AnswerValue>;
 
 export type TimeOfDay = 'morning' | 'noon' | 'golden' | 'dusk' | 'overcast';
 /** the 3D world the letter arrives in */
-export type EnvironmentKey = 'park' | 'seaside' | 'atelier' | 'skies';
+export type EnvironmentKey = 'park' | 'seaside' | 'atelier' | 'skies' | 'lantern';
 export type FontKey =
   | 'script'
   | 'elegant'

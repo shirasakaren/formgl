@@ -97,6 +97,8 @@ export const sceneRefs = {
   shadowRate: 0,
   /** force one shadow map refresh */
   shadowDirty: true,
+  /** strength of the over-the-shoulder reading light (dark worlds turn it up); set by each world */
+  readingLight: 1,
   /** world point the depth of field focuses on */
   focus: new THREE.Vector3(0.05, 0.45, 0.04),
   /** distance camera → focus, updated each frame */

@@ -42,6 +42,11 @@ const FIELD = /* glsl */ `
       float b = fbm(uv * vec2(asp, 1.0) * 2.2);
       float billow = 1.0 - abs(b * 2.0 - 1.0);
       return clamp(r * 0.5 + billow * 0.55 + (b - 0.5) * 0.2, 0.0, 1.0);
+    #elif MODE == 4
+      // embers: the colour burns away from a glowing point low in the middle, like paper from a candle
+      vec2 d = (uv - vec2(0.5, 0.08)) * vec2(asp, 1.0);
+      float r = length(d) / length(vec2(asp * 0.6, 1.0));
+      return clamp(r * 0.78 + (fbm(uv * vec2(asp, 1.0) * 4.0) - 0.5) * 0.3, 0.0, 1.0);
     #else
       vec2 d = (uv - uCenter) * vec2(asp, 1.0);
       float r = length(d) / length(vec2(asp, 1.0));
@@ -52,7 +57,7 @@ const FIELD = /* glsl */ `
   }
 `;
 
-const MODES = { dandelion: 0, tide: 1, curtain: 2, clouds: 3 } as const;
+const MODES = { dandelion: 0, tide: 1, curtain: 2, clouds: 3, embers: 4 } as const;
 
 export interface RevealProps {
   mode?: keyof typeof MODES;
@@ -128,6 +133,16 @@ export function RevealPass({ mode = 'dandelion', color, run, done: finished = fa
               a *= mix(0.62, 1.0, smoothstep(0.0, 0.18, d));
               float hem = smoothstep(0.02, 0.0, abs(d - 0.006));
               col = mix(col, col * 0.86, hem * 0.6);
+            #elif MODE == 4
+              float fibre = (vnoise(vPx * 0.07) - 0.5) * 0.05;
+              float d = th + fibre - uP;
+              a = smoothstep(-0.005, 0.02, d);
+              // a glowing, charring edge: gold where it burns, darker just before it
+              float burn = smoothstep(0.03, 0.0, abs(d - 0.006)) * step(0.0, uP);
+              float char = smoothstep(0.07, 0.015, d) * step(0.0, uP);
+              col = mix(col, col * 0.55, char * 0.6);
+              col = mix(col, vec3(1.0, 0.66, 0.28), burn);
+              a = max(a, burn);
             #elif MODE == 3
               float d = th - uP;
               a = smoothstep(-0.05, 0.09, d);
@@ -148,7 +163,7 @@ export function RevealPass({ mode = 'dandelion', color, run, done: finished = fa
     sheet.frustumCulled = false;
     scene.add(sheet);
 
-    const density = mode === 'clouds' ? 260 : mode === 'curtain' ? 900 : mode === 'tide' ? 1800 : 2600;
+    const density = mode === 'clouds' ? 260 : mode === 'curtain' || mode === 'embers' ? 900 : mode === 'tide' ? 1800 : 2600;
     const spacing = Math.max(16, Math.sqrt((w * h) / density));
     const cols = Math.ceil(w / spacing) + 1;
     const rows = Math.ceil(h / spacing) + 1;
@@ -162,7 +177,7 @@ export function RevealPass({ mode = 'dandelion', color, run, done: finished = fa
         origin[k * 2 + 1] = y * spacing + (Math.random() - 0.5) * spacing;
         data[k * 4] = Math.random() * 6.283;
         data[k * 4 + 1] =
-          mode === 'clouds' ? spacing * (1.6 + Math.random() * 1.6) : mode === 'curtain' ? 3 + Math.random() * 5 : mode === 'tide' ? 4 + Math.random() * 9 : spacing * (1.1 + Math.random() * 0.9);
+          mode === 'clouds' ? spacing * (1.6 + Math.random() * 1.6) : mode === 'curtain' || mode === 'embers' ? 3 + Math.random() * 5 : mode === 'tide' ? 4 + Math.random() * 9 : spacing * (1.1 + Math.random() * 0.9);
         data[k * 4 + 2] = 0.7 + Math.random() * 0.7;
         data[k * 4 + 3] = (Math.random() - 0.5) * 0.12;
         k++;
@@ -209,6 +224,12 @@ export function RevealPass({ mode = 'dandelion', color, run, done: finished = fa
               p = aOrigin + vec2(sin(a * 2.0 + aData.x) * 20.0 * a, a * uRes.y * 0.08);
               rot = 0.0;
               vA *= 0.55 + 0.45 * sin(uTime * 4.0 + aData.x * 9.0);
+            #elif MODE == 4
+              // embers and fireflies drifting up into the night
+              p = aOrigin + vec2(sin(a * 3.0 + aData.x) * 26.0 * a, pow(a, 1.1) * uRes.y * 0.32);
+              rot = 0.0;
+              s *= 1.0 + sin(uTime * 7.0 + aData.x * 11.0) * 0.25;
+              vA *= 0.6 + 0.4 * sin(uTime * 5.0 + aData.x * 9.0);
             #elif MODE == 3
               // cloud puffs rushing past as we fly through them
               vec2 dir = normalize(aOrigin - uCenter * uRes + vec2(0.001));
@@ -237,6 +258,8 @@ export function RevealPass({ mode = 'dandelion', color, run, done: finished = fa
             vec3 c = min(uColor * (1.0 + vShade) + 0.07, vec3(1.0));
             #if MODE == 1 || MODE == 2
               c = vec3(1.0);
+            #elif MODE == 4
+              c = vec3(1.0, 0.78, 0.42);
             #endif
             gl_FragColor = vec4(c, t.a * vA * uSeeds);
           }`,

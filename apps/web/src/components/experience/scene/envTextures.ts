@@ -236,3 +236,36 @@ export function cloudPuff(size = 256) {
 }
 
 export { smoothstep };
+
+/* ───────────────────────── lantern lake ───────────────────────── */
+
+/** washi paper for the lantern: soft mottling with long, pale fibres (greyscale) */
+export function washiTexture(size = 512) {
+  const c = makeCanvas(size, size);
+  const g = ctx2d(c);
+  const n = new ValueNoise(23);
+  const img = g.createImageData(size, size);
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+      const v = 0.86 + (n.fbm((x / size) * 6, (y / size) * 6, 4, 6) - 0.5) * 0.22;
+      const i = (y * size + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = clamp01(v) * 255;
+      img.data[i + 3] = 255;
+    }
+  g.putImageData(img, 0, 0);
+  const rnd = mulberry32(8);
+  g.lineCap = 'round';
+  for (let i = 0; i < 380; i++) {
+    const x = rnd() * size;
+    const y = rnd() * size;
+    const a = rnd() * Math.PI * 2;
+    const len = 20 + rnd() * 70;
+    g.strokeStyle = rnd() < 0.7 ? `rgba(255,255,255,${0.25 + rnd() * 0.35})` : `rgba(120,100,70,${0.08 + rnd() * 0.1})`;
+    g.lineWidth = 0.6 + rnd() * 1.4;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.quadraticCurveTo(x + Math.cos(a + 0.6) * len * 0.5, y + Math.sin(a + 0.6) * len * 0.5, x + Math.cos(a) * len, y + Math.sin(a) * len);
+    g.stroke();
+  }
+  return toTexture(c, { wrap: true, srgb: false });
+}

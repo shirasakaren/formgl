@@ -309,6 +309,16 @@ export const ENVIRONMENTS: EnvironmentMeta[] = [
     suggest: { loaderColor: '#f4e9f0', envelopeColor: '#f6eef2', sealColor: '#c2577a', paperColor: '#fdf8fa', accentColor: '#b84f76' },
     preview: 'linear-gradient(180deg,#f7d9e3 0%,#e7dcf3 40%,#fdf2e6 75%,#ffffff 100%)',
   },
+  {
+    key: 'lantern',
+    label: 'Lantern Lake',
+    tagline: 'A paper lantern drifting on a night lake',
+    description: 'Blue hour on a still lake. Fireflies drift over the reeds and a warm paper lantern floats up to the jetty with the letter glowing inside. Its lid unfolds and the letter rises into the lantern light. Replies are sealed inside and the lantern rises into the stars.',
+    vessel: 'Floating paper lantern',
+    hint: 'Tap the lantern',
+    suggest: { loaderColor: '#1c2236', envelopeColor: '#f1e3c6', sealColor: '#b5542c', paperColor: '#f8efdd', accentColor: '#c8743a' },
+    preview: 'linear-gradient(175deg,#141b33 0%,#2e3563 55%,#6b4f6a 80%,#e0a15a 100%)',
+  },
 ];
 
 export function environmentMeta(key?: string): EnvironmentMeta {

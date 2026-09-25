@@ -13,7 +13,7 @@ interface Props {
   className?: string;
 }
 
-/** A small drawing of the form's vessel in its world — envelope, bottle, tied letter or balloons. */
+/** A small drawing of the form's vessel in its world — envelope, bottle, tied letter, balloons or lantern. */
 export function WorldSwatch({ world = 'park', envelope, seal, paper = '#fbf7ef', accent = '#8e1b1b', logoUrl, monogram, className }: Props) {
   if (world === 'park') return <EnvelopeSwatch envelope={envelope} seal={seal} paper={paper} logoUrl={logoUrl} monogram={monogram} className={className} />;
   if (world === 'seaside')
@@ -47,6 +47,28 @@ export function WorldSwatch({ world = 'park', envelope, seal, paper = '#fbf7ef',
         </g>
         <path d="M108 58 v-18 h8 v18" fill="#27313a" />
         <path d="M113 40 C 118 20, 126 10, 132 4" stroke="#efe6d2" strokeWidth="2" fill="none" />
+      </svg>
+    );
+  if (world === 'lantern')
+    return (
+      <svg viewBox="0 0 140 80" className={cn('overflow-visible', className)} aria-hidden>
+        <rect x="-10" y="-10" width="160" height="100" rx="6" fill="#141a2e" />
+        <circle cx="26" cy="16" r="7" fill="#eef0f8" />
+        <circle cx="29" cy="14" r="7" fill="#141a2e" />
+        {[[50, 10], [92, 6], [120, 18], [70, 22], [110, 30]].map(([x, y]) => (
+          <circle key={`${x}-${y}`} cx={x} cy={y} r=".9" fill="#fff" opacity=".7" />
+        ))}
+        <rect x="-10" y="54" width="160" height="36" fill="#0b1020" />
+        <ellipse cx="70" cy="64" rx="6" ry="14" fill="#f0a24f" opacity=".25" />
+        <circle cx="112" cy="40" r="2" fill="#ffc47a" opacity=".85" />
+        <circle cx="30" cy="46" r="1.6" fill="#ffc47a" opacity=".7" />
+        <circle cx="70" cy="44" r="16" fill="#ffb35c" opacity=".22" />
+        <rect x="60" y="34" width="20" height="22" rx="1.5" fill={paper} />
+        <rect x="60" y="34" width="20" height="22" rx="1.5" fill="#ff9a3c" opacity=".45" />
+        <rect x="60" y="34" width="20" height="2.5" fill={seal} />
+        <rect x="58" y="55" width="24" height="3.5" rx="1" fill="#3b2b20" />
+        <path d="M70 42 c 2.5 3 2.5 6 0 7.5 c -2.5 -1.5 -2.5 -4.5 0 -7.5z" fill="#fff4c8" />
+        <path d="M56 62 Q 70 60 84 62" stroke="#ffc47a" strokeOpacity=".5" fill="none" />
       </svg>
     );
   // skies

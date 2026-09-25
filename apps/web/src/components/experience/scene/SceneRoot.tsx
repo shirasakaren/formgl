@@ -47,6 +47,7 @@ const LOADERS: Record<EnvironmentKey, () => Promise<{ default: (p: WorldProps) =
   seaside: () => import('./envs/seaside/World'),
   atelier: () => import('./envs/atelier/World'),
   skies: () => import('./envs/skies/World'),
+  lantern: () => import('./envs/lantern/World'),
 };
 const WORLDS = Object.fromEntries(Object.entries(LOADERS).map(([k, load]) => [k, lazy(load)])) as Record<EnvironmentKey, React.LazyExoticComponent<(p: WorldProps) => React.ReactNode>>;
 

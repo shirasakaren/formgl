@@ -68,6 +68,7 @@ export default function SeasideWorld({ form, assets, quality, onOpen }: { form: 
     sceneRefs.cam = seasideCam();
     sceneRefs.shadowRate = 8;
     sceneRefs.shadowDirty = true;
+    sceneRefs.readingLight = 1;
   }, []);
   const shadowSize = quality === 'low' ? 1024 : 2048;
   return (

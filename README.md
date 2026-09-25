@@ -80,7 +80,7 @@ paper fibre, gravel, bark, leaves, the wax emboss and the liner pattern are all 
 | **Pages** | "Fields per page" (plus manual page breaks) splits the letter into sheets. The 3D sheet swings edge-on, the next page is written and it swings back (*fade* just crossfades). Fields appear with *ink*, *typewriter*, *rise*, *blur* or *fade* animations. Without WebGL the letter is a flat paper page with the classic *flip*, *slide*, *fold*, *stack* transitions. |
 | **Send** | The letter folds back into the envelope and the flap closes. A fresh seal is stamped on, and the envelope flies off into the trees. A thank-you card follows, with falling petals and an optional redirect. |
 
-**Worlds.** Admins pick one of four environments in *Design → World*. Each has its own loading vignettes and
+**Worlds.** Admins pick one of five environments in *Design → World*. Each has its own loading vignettes and
 quotes, reveal transition, soundscape, 3D scene, opening and send-off. Every world is a separate lazy chunk, and
 only its textures are painted.
 
@@ -90,10 +90,11 @@ only its textures are painted.
 | **Message in a Bottle** | A corked bottle at the waterline of a morning beach | A wave washes in, the bottle is lifted, the cork twists out and the scroll slides from the neck, slips its ribbon and unrolls | The scroll goes back in, the cork is pushed home, the sea carries it to the horizon |
 | **The Writing Desk** | A ribbon-tied letter on a desk by an open window with sheer curtains | A breeze billows the curtains, the silk bow unties, the pressed violet drifts aside, the letter lifts and opens | The reply folds itself into a paper plane and glides out of the window |
 | **Above the Clouds** | A scroll carried by party balloons beside your hot-air balloon basket | The balloons drift over, you catch the string, let them go and the scroll unrolls | The reply is rolled and tied, a new balloon blows up and carries it off toward the sun |
+| **Lantern Lake** | A glowing paper lantern drifting by a wooden jetty on a moonlit lake | The lantern floats in to the jetty, its paper lid folds open and the letter rises out of the candlelight | The reply is folded back inside, the lid closes, and the lantern lifts off the water into the stars with the others on the lake |
 
-Reveal transitions: dandelion seeds (park), a wave of sea foam (seaside), parting curtains (desk) and parting clouds
-(sky). Soundscapes: wind and birds; waves and gulls; a ticking clock, far birds and curtains; high wind, chimes and
-the burner.
+Reveal transitions: dandelion seeds (park), a wave of sea foam (seaside), parting curtains (desk), parting clouds
+(sky) and drifting embers (lake). Soundscapes: wind and birds; waves and gulls; a ticking clock, far birds and curtains; high wind, chimes and
+the burner; crickets, lapping water and a far-off owl.
 
 **Themes.** Five times of day (morning, noon, golden hour, dusk, overcast) change the sun, sky, fog, foliage and
 bokeh. Admins also choose the colours, paper type, fonts, particles, wind strength and camera sway.
@@ -135,7 +136,7 @@ for each interaction. It can be muted, and the choice is remembered. Admins can 
 - Devices without WebGL get an illustrated 2D envelope.
 
 **QA helpers.** `?fgl=idle` skips the intro and `?fgl=letter` opens the envelope straight away. On the demo page
-`?env=park|seaside|atelier|skies` switches worlds. Adding either
+`?env=park|seaside|atelier|skies|lantern` switches worlds. Adding either
 also keeps animations running in real time on slow software renderers.
 
 ### Field types

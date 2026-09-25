@@ -66,6 +66,7 @@ export default function AtelierWorld({ form, assets, quality, onOpen }: { form: 
     sceneRefs.cam = atelierCam();
     sceneRefs.shadowRate = 12;
     sceneRefs.shadowDirty = true;
+    sceneRefs.readingLight = 1;
   }, []);
   const DIST = 9;
   const shadowSize = quality === 'low' ? 1024 : 2048;

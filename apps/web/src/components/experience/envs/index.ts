@@ -4,14 +4,16 @@ import { parkIntro, parkOpen, parkSend } from '../timeline';
 import { seasideIntro, seasideOpen, seasideSend } from './seaside';
 import { atelierIntro, atelierOpen, atelierSend } from './atelier';
 import { skiesIntro, skiesOpen, skiesSend } from './skies';
+import { lanternIntro, lanternOpen, lanternSend } from './lantern';
 
-export type RevealMode = 'dandelion' | 'tide' | 'curtain' | 'clouds';
-export type Ambience = 'park' | 'sea' | 'room' | 'sky';
+export type RevealMode = 'dandelion' | 'tide' | 'curtain' | 'clouds' | 'embers';
+export type Ambience = 'park' | 'sea' | 'room' | 'sky' | 'night';
 export type VignetteKey =
   | 'ink' | 'stamp' | 'plane' | 'leaves' | 'envelope' | 'dandelion'
   | 'waves' | 'bottle' | 'shell' | 'gull' | 'lighthouse' | 'sunrise'
   | 'typewriter' | 'candle' | 'teacup' | 'clock'
-  | 'balloon' | 'clouds' | 'hotair' | 'kite';
+  | 'balloon' | 'clouds' | 'hotair' | 'kite'
+  | 'lantern' | 'moon' | 'fireflies';
 
 type Tl = { kill: () => void };
 
@@ -95,6 +97,23 @@ const CONFIGS: Record<EnvironmentKey, EnvConfig> = {
     intro: skiesIntro,
     open: skiesOpen,
     send: skiesSend,
+  },
+  lantern: {
+    key: 'lantern',
+    letterStyle: 'fold',
+    revealMode: 'embers',
+    ambience: 'night',
+    vignettes: ['lantern', 'moon', 'fireflies', 'candle', 'ink', 'stamp'],
+    quotes: [
+      'Some wishes are carried by light.',
+      'The lake keeps every lantern safe.',
+      'Hush — the night is listening.',
+      'A small flame, a few kind words.',
+      'Let it go, and watch it rise.',
+    ],
+    intro: lanternIntro,
+    open: lanternOpen,
+    send: lanternSend,
   },
 };
 

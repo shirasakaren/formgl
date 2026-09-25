@@ -177,7 +177,7 @@ export function Letter3D({
     const rl = readLight.current;
     if (rl) {
       const k = anim.rise * anim.rise * (3 - 2 * anim.rise);
-      rl.intensity = 1.15 * k;
+      rl.intensity = 1.15 * k * sceneRefs.readingLight;
       rl.position
         .copy(state.camera.position)
         .add(

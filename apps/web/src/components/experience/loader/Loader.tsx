@@ -4,7 +4,15 @@ import type { LoaderStyle } from '@formgl/shared';
 import { useExperience } from '../store';
 
 import { envConfig, type VignetteKey } from '../envs';
-import { Balloon, Bottle, Candle, Clock, Clouds, Gull, HotAir, Kite, Lighthouse, Shell, Sunrise, Teacup, Typewriter, Waves } from './vignettes2';
+import { Balloon, Bottle, Candle, Clock, Clouds, FirefliesV, Gull, HotAir, Kite, LanternV, Lighthouse, MoonV, Shell, Sunrise, Teacup, Typewriter, Waves } from './vignettes2';
+
+/** relative luminance of a #rrggbb colour (0 dark … 1 light) */
+function luma(hex: string) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return 1;
+  const n = parseInt(m[1], 16);
+  return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+}
 
 type Vignette = VignetteKey;
 
@@ -122,7 +130,11 @@ export function Loader({ hidden }: { hidden: boolean }) {
 
   // a specific loader style shows that vignette only when it belongs to this world
   const active: Vignette = style === 'mixed' || style === 'minimal' || !VIGNETTES.includes(style as Vignette) ? VIGNETTES[idx] : (style as Vignette);
-  const ink = theme?.inkColor ?? '#2b2320';
+  const bg = theme?.loaderColor ?? '#f3e9dc';
+  // on a dark loader (night worlds) dark ink would vanish: draw in moonlight instead
+  const dark = luma(bg) < 0.4;
+  const themeInk = theme?.inkColor ?? '#2b2320';
+  const ink = dark && luma(themeInk) < 0.5 ? '#efe6d6' : themeInk;
   const accent = theme?.sealColor ?? '#8e1b1b';
   // the bar eases toward the real progress and keeps creeping a little while a step runs,
   // so the loader never looks stuck
@@ -145,7 +157,7 @@ export function Loader({ hidden }: { hidden: boolean }) {
   const pct = Math.round(Math.min(1, shown) * 100);
 
   return (
-    <div className={`fgl-loader${hidden ? ' is-hidden' : ''}`} style={{ background: theme?.loaderColor ?? '#f3e9dc', color: ink }} role="status" aria-live="polite" aria-busy={!hidden}>
+    <div className={`fgl-loader${hidden ? ' is-hidden' : ''}`} style={{ background: bg, color: ink, ['--fgl-loader-bg' as string]: bg }} role="status" aria-live="polite" aria-busy={!hidden}>
       <Stage vignettes={VIGNETTES} active={active} ink={ink} accent={accent} show={style !== 'minimal'} />
       <p className="fgl-loader-quote">{quote}</p>
       <div className="fgl-loader-progress" aria-hidden>
@@ -201,6 +213,9 @@ const Stage = memo(function Stage({ vignettes: VIGNETTES, active, ink, accent, s
               {v === 'clouds' && <Clouds ink={ink} accent={accent} />}
               {v === 'hotair' && <HotAir ink={ink} accent={accent} />}
               {v === 'kite' && <Kite ink={ink} accent={accent} />}
+              {v === 'lantern' && <LanternV ink={ink} accent={accent} />}
+              {v === 'moon' && <MoonV ink={ink} accent={accent} />}
+              {v === 'fireflies' && <FirefliesV ink={ink} accent={accent} />}
             </div>
           ))}
       </div>

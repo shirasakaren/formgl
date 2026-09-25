@@ -6,14 +6,14 @@ const opts = (...l: string[]) => l.map((label, i) => ({ id: `o${i}`, label }));
 export function demoForm(env: EnvironmentKey = 'park'): PublicForm {
   const f = createField;
   const meta = environmentMeta(env);
-  const subtitles: Record<EnvironmentKey, string> = { park: 'open me slowly', seaside: 'found at low tide', atelier: 'written by the window', skies: 'carried on the wind' };
+  const subtitles: Record<EnvironmentKey, string> = { park: 'open me slowly', seaside: 'found at low tide', atelier: 'written by the window', skies: 'carried on the wind', lantern: 'light it and let it go' };
   return {
     id: 'demo',
     slug: 'demo',
     title: 'A letter for you',
     description: '',
     availability: 'open',
-    theme: { ...DEFAULT_THEME, ...(env === 'park' ? {} : meta.suggest), environment: env, envelopeTitle: 'For You', envelopeSubtitle: subtitles[env], openHint: '', timeOfDay: env === 'seaside' || env === 'atelier' ? 'morning' : 'golden' },
+    theme: { ...DEFAULT_THEME, ...(env === 'park' ? {} : meta.suggest), environment: env, envelopeTitle: 'For You', envelopeSubtitle: subtitles[env], openHint: '', timeOfDay: env === 'seaside' || env === 'atelier' ? 'morning' : env === 'lantern' ? 'dusk' : 'golden' },
     settings: {
       ...DEFAULT_SETTINGS,
       fieldsPerPage: 3,

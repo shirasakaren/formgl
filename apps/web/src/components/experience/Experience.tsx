@@ -114,7 +114,7 @@ export function Experience({ form, demo = false, preview = false }: { form: Publ
       preview,
       phase: 'loading',
       progress: 0.03,
-      progressLabel: 'Gathering sunlight',
+      progressLabel: form.theme.environment === 'lantern' ? 'Gathering moonlight' : 'Gathering sunlight',
       quality: detectQuality(),
       reducedMotion,
       webgl: hasWebGL(),

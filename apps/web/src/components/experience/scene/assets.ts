@@ -85,6 +85,7 @@ const ENV_BAKES = {
     ['Weaving the basket', () => bake('wicker', undefined as never)],
     ['Inflating the balloons', () => bake('balloons', undefined as never)],
   ],
+  lantern: () => [['Folding the paper lantern', () => bake('lanternLake', undefined as never)]],
 } as unknown as Record<string, (form: PublicForm) => Array<[string, () => Promise<Record<string, THREE.Texture>>]>>;
 
 /**
@@ -117,7 +118,7 @@ async function build(form: PublicForm, envKey: string, onProgress: (p: number, l
   /* progress: every task has a weight; the label follows the latest finished task */
   let total = 0;
   let done = 0;
-  let label = 'Gathering sunlight';
+  let label = envKey === 'lantern' ? 'Gathering moonlight' : 'Gathering sunlight';
   const track = <T,>(name: string, weight: number, p: Promise<T>): Promise<T> => {
     total += weight;
     return p.then((v) => {
