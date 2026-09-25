@@ -44,6 +44,17 @@ function ReadySignal({ onReady }: { onReady: () => void }) {
   return null;
 }
 
+/** While the DOM letter covers most of the screen, render the scene at ~30fps. */
+function Throttle({ active }: { active: boolean }) {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    if (!active) return;
+    const t = setInterval(() => invalidate(), 1000 / 30);
+    return () => clearInterval(t);
+  }, [active, invalidate]);
+  return null;
+}
+
 function World({ form, assets, quality, onOpen }: { form: PublicForm; assets: SceneAssets; quality: Quality; onOpen: () => void }) {
   const t = form.theme;
   const preset = PRESETS[t.timeOfDay] ?? PRESETS.golden;
@@ -81,6 +92,18 @@ export default function SceneRoot({ onReady, onOpen }: { onReady: () => void; on
   const [assets, setAssets] = useState<SceneAssets | null>(null);
   const maxDpr = quality === 'high' ? 1.75 : quality === 'medium' ? 1.35 : 1;
   const [dpr, setDpr] = useState(() => Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, maxDpr));
+  const phase = useExperience((s) => s.phase);
+  // the scene is mostly behind the paper (and blurred) while reading: save the battery
+  const [calm, setCalm] = useState(false);
+  useEffect(() => {
+    if (phase !== 'reading') {
+      setCalm(false);
+      return;
+    }
+    const t = setTimeout(() => setCalm(true), 1400);
+    return () => clearTimeout(t);
+  }, [phase]);
+  const effDpr = calm ? Math.max(0.6, dpr * 0.6) : dpr;
 
   useEffect(() => {
     let alive = true;
@@ -118,6 +141,7 @@ export default function SceneRoot({ onReady, onOpen }: { onReady: () => void; on
   );
 
   const lowerQuality = () => {
+    if (calm) return;
     const q = useExperience.getState().quality;
     if (dpr > 1.01) setDpr((d) => Math.max(1, d - 0.25));
     else if (q !== 'low') set({ quality: q === 'high' ? 'medium' : 'low' });
@@ -126,12 +150,14 @@ export default function SceneRoot({ onReady, onOpen }: { onReady: () => void; on
   return (
     <Canvas
       className="fgl-canvas"
-      dpr={dpr}
+      dpr={effDpr}
+      frameloop={calm ? 'demand' : 'always'}
       gl={{ antialias: quality === 'low', powerPreference: 'high-performance', alpha: false, stencil: false }}
       camera={{ fov: 32, near: 0.02, far: 220, position: [1.2, 1.2, 3.2] }}
       onCreated={onCreated}
       aria-hidden
     >
+      <Throttle active={calm} />
       <PerformanceMonitor onDecline={lowerQuality} flipflops={3} onFallback={() => set({ quality: 'low' })}>
         {assets && (
           <>

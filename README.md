@@ -1,0 +1,174 @@
+# FormGL — letters, not forms
+
+FormGL is a form builder whose forms arrive as **hand-sealed letters in a 3D park**.
+Respondents find an envelope resting on an old wooden bench under a tree. Sunlight falls through the
+leaves and moves across the bench. They break the wax seal, the flap curls open, and the letter slides out
+and unfolds in front of them. Then they answer on real paper, one page at a time.
+
+Admins get a full dashboard at `/admin`: templates, a visual editor, theming, publishing with custom or random
+short links, a responses table with data tools, and analytics.
+
+```
+apps/
+  web/     Next.js 16 (App Router, React 19) — public 3D experience + /admin dashboard
+  api/     NestJS 11 on Express — REST API (Postgres · Redis · S3)
+packages/
+  shared/  @formgl/shared — field catalog, types, validation, pagination, templates
+docs/
+  API.md   the HTTP contract
+```
+
+---
+
+## Quick start
+
+Requirements: Node ≥ 20.11 (22 recommended), pnpm 10, Docker (for Postgres / Redis / MinIO).
+
+```bash
+pnpm install
+cp .env.example .env                  # set ADMIN_PASSPHRASE + SESSION_SECRET (read by both apps)
+docker compose up -d                  # postgres:5432, redis:6379, minio:9000 (bucket "formgl")
+pnpm --filter @formgl/shared build
+pnpm dev                              # web → http://localhost:3000   api → http://localhost:4000/api
+```
+
+- `http://localhost:3000/` shows a **demo letter**. It needs no backend and sends nothing.
+- `http://localhost:3000/admin` asks for the passphrase in `ADMIN_PASSPHRASE`.
+- Published forms live at `http://localhost:3000/<slug>`.
+
+Database migrations run automatically when the API boots.
+
+### Run everything in Docker
+
+```bash
+docker compose --profile app up -d --build     # infra + api + web
+```
+
+### Environment
+
+Every key is listed in [`.env.example`](.env.example).
+
+| Key | Purpose |
+| --- | --- |
+| `ADMIN_PASSPHRASE` | Passphrase for `/admin` (required) |
+| `SESSION_SECRET` | Long random string |
+| `DATABASE_URL` | Postgres connection string |
+| `REDIS_URL` | Redis. Used for admin sessions, the public form cache and rate limits |
+| `S3_*` | Any S3 compatible bucket (MinIO, R2, B2, Wasabi, AWS…) · `S3_FORCE_PATH_STYLE=true` for MinIO |
+| `MAX_UPLOAD_MB` | Largest file a respondent may upload |
+| `TRUST_PROXY` | Trust `X-Forwarded-For` and CDN geo headers behind a proxy |
+| `API_INTERNAL_URL` | Where Next.js reaches the API. `/api/*` is rewritten to it |
+| `NEXT_PUBLIC_SITE_URL` | Public URL, used for OG tags |
+
+---
+
+## The public experience (`apps/web/src/components/experience`)
+
+Everything you see is generated in the browser. There are no downloaded models, HDRs or textures: wood grain,
+paper fibre, gravel, bark, leaves, the wax emboss and the liner pattern are all painted procedurally on canvases.
+
+| Stage | What happens |
+| --- | --- |
+| **Loader** | A solid page in the theme's colour cycles through small hand-drawn vignettes: ink writing a flourish, a wax stamp pressing, a paper plane, falling leaves, an envelope sealing, a dandelion. It shows real progress as the fonts, textures and shaders load. |
+| **Dandelion reveal** | The solid colour breaks into thousands of GPU dandelion seeds. Each seed carries the colour away on the wind, uncovering the park. |
+| **Establishing shot** | The camera glides from a wide view of the park to the envelope leaning on the bench. |
+| **Scene** | A cast-iron and wood bench. Moving *komorebi* light: a live leaf-canopy mask projected by the sun (a spotlight `map` plus soft shadows). Swaying grass and meadow flowers, billboard foliage, a hero tree, dandelions, dust motes, falling leaves, butterflies, light shafts and bokeh. Depth of field, bloom, AgX tone mapping, AO and grain. |
+| **Envelope** | A paper envelope with a real flap geometry that bends. The title is handwritten in the theme's font. The wax seal is embossed with the admin's **logo**, or a monogram. |
+| **Opening** | Tap: the envelope lifts and turns toward you. The seal trembles, **cracks in two** and throws wax crumbs onto the bench. The flap curls open to show a botanical liner. The folded letter slides out, rises into the light and **unfolds**, and the camera brings it close to read. |
+| **Letter** | The 3D sheet crossfades into an accessible DOM letter at the same position. It has paper texture, leaf shadows drifting across it, lined, dotted or grid ruling, a greeting, cover image or video, intro text and a sign-off. |
+| **Pages** | "Fields per page" (plus manual page breaks) splits the letter into sheets. Sheets turn with *flip*, *slide*, *fold*, *stack* or *fade*. Fields appear with *ink*, *typewriter*, *rise*, *blur* or *fade* animations. |
+| **Send** | The letter folds back into the envelope and the flap closes. A fresh seal is stamped on, and the envelope flies off into the trees. A thank-you card follows, with falling petals and an optional redirect. |
+
+**Themes.** Five times of day (morning, noon, golden hour, dusk, overcast) change the sun, sky, fog, foliage and
+bokeh. Admins also choose the colours, paper type, fonts, particles, wind strength and camera sway.
+
+**Sound.** A procedural WebAudio soundscape: wind in the leaves and distant birds, plus paper, wax and pen sounds
+for each interaction. It can be muted, and the choice is remembered. Admins can add their own music URL.
+
+**Performance.** The scene has quality tiers (low, medium, high), picked from the device and adjusted live with a
+performance monitor. While the reader is on the letter, the scene renders at about 30 fps and lower resolution.
+The pixel ratio is capped. Force a tier with `?quality=low|medium|high`.
+
+**Accessibility & devices.**
+
+- Works from small phones to ultrawide screens. The camera framing adapts to the screen shape, and safe-area
+  insets are respected.
+- The envelope hint is a real `<button>`, there is a "Skip to the questions" link, and every field is labelled.
+- Errors are announced, and focus is managed between pages.
+- Keyboard: Enter moves to the next page, and arrow keys work in radio groups.
+- `prefers-reduced-motion` gets a faster, calmer version.
+- Devices without WebGL get an illustrated 2D envelope.
+
+**QA helpers.** `?fgl=idle` skips the intro and `?fgl=letter` opens the envelope straight away. Adding either
+also keeps animations running in real time on slow software renderers.
+
+### Field types
+
+Short answer · long answer · email · phone (with country code) · link · number · currency · multiple choice
+(list/grid/cards/picture choice, "Other") · checkboxes · dropdown · multiselect tags · yes/no · rating (stars,
+hearts, circles, thumbs, flowers) · linear scale · NPS · slider · ranking (drag or buttons) · matrix · date · time ·
+date & time · date range · file upload · image upload (previews, progress) · signature pad · colour · full name ·
+address · country · consent · hidden (filled from `?param=`).
+
+Content blocks: heading, rich text (highlight, colours, links, lists, alignment), image, video (YouTube, Vimeo,
+mp4), quote, divider (line, dots, flourish, wave), spacer, page break.
+
+Every field supports: required, help text, placeholder, width (full or half), per-field animation, validation
+(length, range, pattern, selection count, file type and size) and **conditional logic** (show or hide when
+all/any conditions match). Validation runs in both the browser and the API, using the same code from
+`@formgl/shared`.
+
+---
+
+## Admin dashboard (`/admin`)
+
+- **Passphrase login.** The session lives in Redis behind an httpOnly cookie. Login is rate limited.
+- **Forms.** Search, status filter, stats and 11 templates: wedding RSVP, birthday wishes, event registration,
+  customer feedback, job application, secret admirer, class reflection, volunteer sign-up, product waitlist,
+  guest book, and blank.
+- **Editor.**
+  - **Build:** drag-and-drop fields, page separators, a properties panel and a logic builder.
+  - **Design:** every theme option, uploads for the logo seal and cover image, and a live preview.
+  - **Settings:** greeting, intro, labels, thank-you message, schedule, response limit, one reply per device,
+    save progress, SEO.
+  - **Share:** a custom slug with a live availability check, or the shortest free random slug (3 characters
+    and up). Also a QR code, an embed snippet and a preview link.
+  - Changes autosave.
+- **Responses.**
+  - A sortable, filterable table with column visibility and resizing, a sticky first column and bulk delete.
+  - Rich cells show images in a lightbox, play video, and display file chips, signatures, colour swatches and
+    star ratings.
+  - A detail drawer shows metadata (IP, location, device, browser, OS, referrer, duration), notes and tags.
+  - Export CSV, XLSX or JSON, or copy as TSV.
+  - Cleaning tools: trim, change case, hide empty, date range, and find and delete duplicates.
+- **Analytics.**
+  - Views and unique visitors, open, start and completion rates, and average and median time to complete.
+  - A funnel, activity over time, and breakdowns by hour and weekday.
+  - A world map with country shading and visit dots, plus cities, referrers, devices, browsers and operating
+    systems.
+  - Page drop-off.
+  - Per-question insights: distributions, mean, median and standard deviation, histograms, NPS, top words.
+  - A tool to compare two questions: contingency tables, correlation and grouped means.
+  - A raw visit log.
+
+---
+
+## API
+
+NestJS on Express, under `/api`. The full contract is in [`docs/API.md`](docs/API.md).
+
+- **Postgres (Drizzle ORM):** forms, responses, events, files. Migrations are in `apps/api/drizzle`.
+- **Redis:** admin sessions, a 30-second public form cache, fixed-window rate limits.
+- **S3:** uploads go through the API. `GET /api/files/*` streams them back with `Range` support, so videos can
+  be seeked.
+- **Analytics:** IP geolocation (CDN headers, then geoip-lite) and user-agent parsing. Tracked events: view,
+  loaded, open, start, page, submit and abandon.
+
+## Scripts
+
+```bash
+pnpm dev            # web + api in watch mode
+pnpm build          # build everything (turbo)
+pnpm typecheck
+pnpm db:generate    # drizzle-kit: new migration after editing apps/api/src/db/schema.ts
+```

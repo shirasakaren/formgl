@@ -16,7 +16,7 @@ const FLAP_L = H * ENVELOPE.tipY;
 const Y_BACK = 0.0011;
 const Y_POCKET = 0.0029;
 const Y_FLAP = 0.0036;
-const SEAL_R = 0.0185;
+const SEAL_R = 0.0205;
 const SEAL_S = FLAP_L - SEAL_R * 0.28; // seal centre distance from hinge
 const CRUMBS = 14;
 

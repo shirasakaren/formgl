@@ -527,7 +527,7 @@ export function sealMaps(opts: { logo?: HTMLImageElement | null; monogram: strin
     try {
       const lw = opts.logo.naturalWidth;
       const lh = opts.logo.naturalHeight;
-      const scale = (inner * 1.45) / Math.max(lw, lh);
+      const scale = (inner * 1.75) / Math.max(lw, lh);
       const w = lw * scale;
       const hh = lh * scale;
       const tmp = makeCanvas(Math.max(1, Math.round(w)), Math.max(1, Math.round(hh)));
