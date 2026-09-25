@@ -38,13 +38,15 @@ export interface RevealProps {
   color: string;
   /** false: the sheet stays fully opaque (covering the scene) */
   run: boolean;
+  /** finished: stop drawing the overlay (stays mounted — see note in useFrame) */
+  done?: boolean;
   reduced: boolean;
   /** render the main scene too (when there is no post-processing composer) */
   renderScene: boolean;
   onDone: () => void;
 }
 
-export function RevealPass({ color, run, reduced, renderScene, onDone }: RevealProps) {
+export function RevealPass({ color, run, done: finished = false, reduced, renderScene, onDone }: RevealProps) {
   const { size } = useThree();
   const done = useRef(onDone);
   done.current = onDone;
@@ -178,6 +180,10 @@ export function RevealPass({ color, run, reduced, renderScene, onDone }: RevealP
       gl.autoClear = true;
       gl.render(scene, camera);
     }
+    // NB: this component stays mounted after the reveal. A priority>0 frame
+    // subscriber disables R3F's automatic render, so in the no-composer path
+    // (renderScene) we keep rendering the scene ourselves.
+    if (finished) return;
     const c = clock.current;
     let p = -0.06;
     if (run) {

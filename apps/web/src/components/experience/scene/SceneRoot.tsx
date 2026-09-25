@@ -172,7 +172,7 @@ export default function SceneRoot({ onReady, onOpen, reveal }: { onReady: () => 
           <>
             <World form={form} assets={assets} quality={quality} onOpen={onOpen} />
             <ReadySignal onReady={onReady} />
-            {!reveal.done && <RevealPass color={reveal.color} run={reveal.run} reduced={reduced} renderScene={quality === 'low'} onDone={reveal.onDone} />}
+            <RevealPass color={reveal.color} run={reveal.run} done={reveal.done} reduced={reduced} renderScene={quality === 'low'} onDone={reveal.onDone} />
           </>
         )}
       </PerformanceMonitor>

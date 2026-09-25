@@ -54,7 +54,8 @@ export function CameraRig({ sway = true, reducedMotion = false }: { sway?: boole
 
     /* ── hero: envelope leaning on the backrest in the lower third, the park above ── */
     const frac = portrait ? 0.62 : aspect < 1.25 ? 0.44 : 0.32;
-    const heroDist = ENVELOPE.w / (frac * 2 * tanH * aspect);
+    // fit by width, but never let the envelope fill too much of the height (ultrawide / landscape phones)
+    const heroDist = Math.max(ENVELOPE.w / (frac * 2 * tanH * aspect), ENVELOPE.h / ((portrait ? 0.34 : 0.38) * 2 * tanH));
     v.heroT.set(rest.x, rest.y, rest.z);
     spherical(v.heroT, portrait ? 0.26 : 0.3, portrait ? 0.42 : 0.62, heroDist, v.heroP);
     // look a little above the envelope so the backrest and the park fill the top
