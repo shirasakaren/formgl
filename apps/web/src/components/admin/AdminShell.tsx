@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Toaster, toast } from 'sonner';
-import { BarChart3, Eye, EyeOff, Inbox, LayoutGrid, LogOut, Menu as MenuIcon, PenSquare, X } from 'lucide-react';
+import { BarChart3, Eye, EyeOff, Inbox, LayoutGrid, LogOut, Menu as MenuIcon, PenSquare, Search, X } from 'lucide-react';
+import { CommandPalette } from './CommandPalette';
 import { api, ApiError, errorMessage } from '@/lib/admin/api';
 import { cn } from '@/lib/admin/utils';
 import { Button, PageLoader } from './ui';
@@ -155,6 +156,14 @@ function Frame({ children, onLogout }: { children: ReactNode; onLogout: () => vo
           <span className="block text-[10px] tracking-[0.16em] text-(--ink-3) uppercase">Studio</span>
         </span>
       </Link>
+      <button
+        onClick={() => window.dispatchEvent(new Event('fgl:palette'))}
+        className="flex items-center gap-2 rounded-lg border border-(--line) bg-white/70 px-2.5 py-2 text-[13px] text-(--ink-3) transition-colors hover:bg-white hover:text-(--ink-2)"
+      >
+        <Search className="size-4" aria-hidden />
+        <span className="flex-1 text-left">Search…</span>
+        <kbd className="rounded border border-(--line) px-1 text-[10.5px]">⌘K</kbd>
+      </button>
       <NavGroup items={nav} />
       {formNav.length > 0 && <NavGroup title="This form" items={formNav} />}
       <div className="mt-auto">
@@ -187,12 +196,16 @@ function Frame({ children, onLogout }: { children: ReactNode; onLogout: () => vo
           <Link href="/admin" className="font-script text-2xl">
             FormGL
           </Link>
-          <button onClick={logout} aria-label="Sign out" className="ml-auto grid size-9 place-items-center rounded-lg text-(--ink-2) hover:bg-white">
+          <button onClick={() => window.dispatchEvent(new Event('fgl:palette'))} aria-label="Search" className="ml-auto grid size-9 place-items-center rounded-lg text-(--ink-2) hover:bg-white">
+            <Search className="size-4" />
+          </button>
+          <button onClick={logout} aria-label="Sign out" className="grid size-9 place-items-center rounded-lg text-(--ink-2) hover:bg-white">
             <LogOut className="size-4" />
           </button>
         </header>
         <main className="min-w-0 flex-1">{children}</main>
       </div>
+      <CommandPalette formId={formId} onLogout={logout} />
     </div>
   );
 }

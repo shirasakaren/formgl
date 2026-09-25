@@ -4,14 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
-import { BarChart3, Copy, CopyPlus, ExternalLink, Eye, FileText, Inbox, MoreHorizontal, PenSquare, Plus, Search, Trash2, Mail } from 'lucide-react';
+import { BarChart3, Copy, CopyPlus, ExternalLink, Eye, FileText, Inbox, LayoutGrid, List, MoreHorizontal, PenSquare, Pin, PinOff, Plus, Search, Trash2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
-import type { FormStatus, FormSummary } from '@formgl/shared';
+import { environmentMeta, type FormStatus, type FormSummary } from '@formgl/shared';
 import { api, errorMessage, type OverviewData } from '@/lib/admin/api';
 import { CHART_COLORS, cn, copyText, fmtAgo, fmtCompact, fmtDate, fmtNum, fmtPct, publicUrl } from '@/lib/admin/utils';
 import { PageHeader } from './AdminShell';
 import { Button, Card, ConfirmDialog, EmptyState, IconButton, Input, Menu, MenuItem, PageLoader, Segmented, StatusBadge } from './ui';
-import { EnvelopeSwatch } from './EnvelopeSwatch';
+import { WorldSwatch } from './WorldSwatch';
 import { TemplateGallery } from './TemplateGallery';
 
 export function FormsDashboard() {
@@ -20,6 +20,24 @@ export function FormsDashboard() {
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<'all' | FormStatus>('all');
+  const [sort, setSort] = useState<'updated' | 'responses' | 'recent' | 'az'>('updated');
+  const [view, setViewState] = useState<'grid' | 'list'>('grid');
+  useEffect(() => {
+    try {
+      const v = window.localStorage.getItem('fgl_admin_view');
+      if (v === 'list' || v === 'grid') setViewState(v);
+    } catch {
+      /* noop */
+    }
+  }, []);
+  const setView = (v: 'grid' | 'list') => {
+    setViewState(v);
+    try {
+      window.localStorage.setItem('fgl_admin_view', v);
+    } catch {
+      /* noop */
+    }
+  };
   const [gallery, setGallery] = useState(false);
   const [toDelete, setToDelete] = useState<FormSummary | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -35,8 +53,27 @@ export function FormsDashboard() {
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return (forms ?? []).filter((f) => (status === 'all' || f.status === status) && (!s || f.title.toLowerCase().includes(s) || f.slug.toLowerCase().includes(s)));
-  }, [forms, q, status]);
+    const list = (forms ?? []).filter((f) => (status === 'all' || f.status === status) && (!s || f.title.toLowerCase().includes(s) || f.slug.toLowerCase().includes(s)));
+    const by: Record<typeof sort, (a: FormSummary, b: FormSummary) => number> = {
+      updated: (a, b) => b.updatedAt.localeCompare(a.updatedAt),
+      responses: (a, b) => b.responseCount - a.responseCount,
+      recent: (a, b) => (b.lastResponseAt ?? '').localeCompare(a.lastResponseAt ?? ''),
+      az: (a, b) => (a.title || '').localeCompare(b.title || ''),
+    };
+    // pinned letters always stay on top
+    return list.sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || by[sort](a, b));
+  }, [forms, q, status, sort]);
+
+  const togglePin = async (f: FormSummary) => {
+    const pinned = !f.pinned;
+    setForms((l) => (l ?? []).map((x) => (x.id === f.id ? { ...x, pinned } : x)));
+    try {
+      await api.forms.pin(f.id, pinned);
+    } catch (e) {
+      setForms((l) => (l ?? []).map((x) => (x.id === f.id ? { ...x, pinned: !pinned } : x)));
+      toast.error(errorMessage(e));
+    }
+  };
 
   const duplicate = async (f: FormSummary) => {
     try {
@@ -81,6 +118,7 @@ export function FormsDashboard() {
       />
 
       <Overview data={overview} forms={forms} />
+      <LatestReplies data={overview} />
 
       <section aria-label="Forms" className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -88,13 +126,36 @@ export function FormsDashboard() {
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-(--ink-3)" aria-hidden />
             <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search forms…" aria-label="Search forms" className="pl-9" />
           </div>
-          <Segmented
-            label="Filter by status"
-            value={status}
-            onChange={setStatus}
-            size="sm"
-            options={(['all', 'published', 'draft', 'closed'] as const).map((s) => ({ value: s, label: `${s[0].toUpperCase()}${s.slice(1)} · ${counts[s]}` }))}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <Segmented
+              label="Filter by status"
+              value={status}
+              onChange={setStatus}
+              size="sm"
+              options={(['all', 'published', 'draft', 'closed'] as const).map((s) => ({ value: s, label: `${s[0].toUpperCase()}${s.slice(1)} · ${counts[s]}` }))}
+            />
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as typeof sort)}
+              aria-label="Sort forms"
+              className="h-8 rounded-lg border border-(--line) bg-white px-2 text-[12.5px] text-(--ink-2) hover:border-(--line-2) focus:outline-none"
+            >
+              <option value="updated">Recently edited</option>
+              <option value="recent">Latest reply</option>
+              <option value="responses">Most replies</option>
+              <option value="az">A → Z</option>
+            </select>
+            <Segmented
+              label="View"
+              value={view}
+              onChange={setView}
+              size="sm"
+              options={[
+                { value: 'grid', label: '', icon: LayoutGrid },
+                { value: 'list', label: '', icon: List },
+              ]}
+            />
+          </div>
         </div>
 
         {forms === null ? (
@@ -112,11 +173,15 @@ export function FormsDashboard() {
             )}
           </Card>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((f) => (
-              <FormCard key={f.id} form={f} onDuplicate={() => duplicate(f)} onDelete={() => setToDelete(f)} />
-            ))}
-          </div>
+          view === 'grid' ? (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {filtered.map((f) => (
+                <FormCard key={f.id} form={f} onDuplicate={() => duplicate(f)} onDelete={() => setToDelete(f)} onPin={() => togglePin(f)} />
+              ))}
+            </div>
+          ) : (
+            <FormTable forms={filtered} onPin={togglePin} onDuplicate={duplicate} onDelete={setToDelete} />
+          )
         )}
       </section>
 
@@ -204,19 +269,65 @@ function Stat({ icon: Icon, label, value, sub }: { icon: typeof Eye; label: stri
   );
 }
 
-function FormCard({ form, onDuplicate, onDelete }: { form: FormSummary; onDuplicate: () => void; onDelete: () => void }) {
+/** 14-day reply sparkline */
+function Spark({ values, color = '#8e1b1b', className }: { values?: number[]; color?: string; className?: string }) {
+  const v = values?.length ? values : new Array(14).fill(0);
+  const max = Math.max(1, ...v);
+  const pts = v.map((n, i) => `${(i / (v.length - 1)) * 100},${28 - (n / max) * 24}`).join(' ');
+  const total = v.reduce((a, b) => a + b, 0);
+  return (
+    <svg viewBox="0 0 100 30" preserveAspectRatio="none" className={cn('h-7 w-full overflow-visible', className)} role="img" aria-label={`${total} replies in the last 14 days`}>
+      <polyline points={`0,30 ${pts} 100,30`} fill={color} fillOpacity=".08" stroke="none" />
+      <polyline points={pts} fill="none" stroke={color} strokeOpacity={total ? 1 : 0.25} strokeDasharray={total ? undefined : '2 3'} strokeWidth="1.6" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FormCard({ form, onDuplicate, onDelete, onPin }: { form: FormSummary; onDuplicate: () => void; onDelete: () => void; onPin: () => void }) {
   const url = publicUrl(form.slug);
   const isLive = form.status === 'published';
   const copy = async () => ((await copyText(url)) ? toast.success('Link copied') : toast.error('Could not copy'));
   const t = form.theme ?? ({} as FormSummary['theme']);
   return (
-    <Card className="group flex flex-col overflow-hidden transition-shadow hover:shadow-[0_16px_36px_-18px_rgba(60,40,20,.35)]">
-      <Link href={`/admin/forms/${form.id}`} className="relative flex h-32 items-center justify-center" style={{ background: `linear-gradient(155deg, ${t.loaderColor || '#f3e9dc'} 0%, ${t.paperColor || '#fbf7ef'} 100%)` }} aria-label={`Edit ${form.title}`}>
-        <EnvelopeSwatch envelope={t.envelopeColor || '#efe6d6'} seal={t.sealColor || '#8e1b1b'} paper={t.paperColor} logoUrl={t.logoUrl} monogram={form.title?.[0]} className="w-28 transition-transform duration-300 group-hover:-translate-y-1 group-hover:rotate-[-2deg]" />
-        <span className="absolute top-3 left-3">
+    <Card className="group relative flex flex-col overflow-hidden transition-shadow hover:shadow-[0_16px_36px_-18px_rgba(60,40,20,.35)]">
+      <Link
+        href={`/admin/forms/${form.id}`}
+        className="relative flex h-32 items-center justify-center overflow-hidden"
+        style={{ background: `${environmentMeta(t.environment).preview}` }}
+        aria-label={`Edit ${form.title}`}
+      >
+        <span className="absolute inset-0 bg-white/35" aria-hidden />
+        <WorldSwatch
+          world={t.environment}
+          envelope={t.envelopeColor || '#efe6d6'}
+          seal={t.sealColor || '#8e1b1b'}
+          paper={t.paperColor}
+          accent={t.accentColor}
+          logoUrl={t.logoUrl}
+          monogram={form.title?.[0]}
+          className="relative w-32 transition-transform duration-300 group-hover:-translate-y-1 group-hover:rotate-[-2deg]"
+        />
+        <span className="absolute top-3 left-3 flex items-center gap-1.5">
           <StatusBadge status={form.status} />
+          {form.hasUnpublishedChanges && form.status === 'published' && (
+            <span className="rounded-full bg-[#fdf3dc] px-2 py-0.5 text-[11px] font-medium text-[#8a6412]" title="The draft has edits respondents don’t see yet">
+              Unpublished edits
+            </span>
+          )}
         </span>
+        <span className="absolute right-3 bottom-2.5 rounded-full bg-white/80 px-2 py-0.5 text-[10.5px] font-medium text-(--ink-2)">{environmentMeta(t.environment).label}</span>
       </Link>
+      <button
+        onClick={onPin}
+        aria-label={form.pinned ? 'Unpin' : 'Pin to top'}
+        title={form.pinned ? 'Unpin' : 'Pin to top'}
+        className={cn(
+          'absolute top-2.5 right-2.5 grid size-8 place-items-center rounded-full bg-white/85 text-(--ink-2) shadow-sm transition-opacity hover:text-(--accent)',
+          form.pinned ? 'text-(--accent) opacity-100' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+        )}
+      >
+        <Pin className={cn('size-4', form.pinned && 'fill-current')} />
+      </button>
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -239,6 +350,7 @@ function FormCard({ form, onDuplicate, onDelete }: { form: FormSummary; onDuplic
                 <MenuItem icon={BarChart3} href={`/admin/forms/${form.id}/analytics`}>Analytics</MenuItem>
                 <MenuItem icon={Copy} onClick={() => { close(); copy(); }}>Copy link</MenuItem>
                 <MenuItem icon={ExternalLink} href={isLive ? `/${form.slug}` : `/${form.slug}?preview=1`} target="_blank" onClick={close}>{isLive ? 'Open' : 'Preview'}</MenuItem>
+                <MenuItem icon={form.pinned ? PinOff : Pin} onClick={() => { close(); onPin(); }}>{form.pinned ? 'Unpin' : 'Pin to top'}</MenuItem>
                 <MenuItem icon={CopyPlus} onClick={() => { close(); onDuplicate(); }}>Duplicate</MenuItem>
                 <div className="my-1 h-px bg-(--line)" />
                 <MenuItem icon={Trash2} danger onClick={() => { close(); onDelete(); }}>Delete</MenuItem>
@@ -246,7 +358,8 @@ function FormCard({ form, onDuplicate, onDelete }: { form: FormSummary; onDuplic
             )}
           </Menu>
         </div>
-        <dl className="mt-4 grid grid-cols-3 gap-2 border-t border-(--line) pt-3 text-xs">
+        <Spark values={form.spark} color={t.sealColor || '#8e1b1b'} className="mt-3" />
+        <dl className="mt-2 grid grid-cols-3 gap-2 border-t border-(--line) pt-3 text-xs">
           <div>
             <dt className="text-(--ink-3)">Responses</dt>
             <dd className="mt-0.5 text-[15px] font-semibold tabular-nums">{fmtNum(form.responseCount)}</dd>
@@ -256,8 +369,10 @@ function FormCard({ form, onDuplicate, onDelete }: { form: FormSummary; onDuplic
             <dd className="mt-0.5 text-[15px] font-semibold tabular-nums">{fmtNum(form.viewCount)}</dd>
           </div>
           <div>
-            <dt className="text-(--ink-3)">Updated</dt>
-            <dd className="mt-0.5 truncate text-[13px] font-medium" title={fmtDate(form.updatedAt)}>{fmtAgo(form.updatedAt).replace(' ago', '')}</dd>
+            <dt className="text-(--ink-3)">Last reply</dt>
+            <dd className="mt-0.5 truncate text-[13px] font-medium" title={form.lastResponseAt ? fmtDate(form.lastResponseAt) : undefined}>
+              {form.lastResponseAt ? fmtAgo(form.lastResponseAt).replace(' ago', '') : '—'}
+            </dd>
           </div>
         </dl>
         <div className="mt-3 flex gap-1.5">
@@ -273,5 +388,103 @@ function FormCard({ form, onDuplicate, onDelete }: { form: FormSummary; onDuplic
         </div>
       </div>
     </Card>
+  );
+}
+
+function FormTable({ forms, onPin, onDuplicate, onDelete }: { forms: FormSummary[]; onPin: (f: FormSummary) => void; onDuplicate: (f: FormSummary) => void; onDelete: (f: FormSummary) => void }) {
+  return (
+    <Card className="overflow-x-auto">
+      <table className="w-full min-w-[720px] text-left text-[13px]">
+        <thead className="border-b border-(--line) text-[11.5px] tracking-wide text-(--ink-3) uppercase">
+          <tr>
+            <th className="w-10 px-3 py-2.5" aria-label="Pinned" />
+            <th className="px-3 py-2.5 font-semibold">Letter</th>
+            <th className="px-3 py-2.5 font-semibold">World</th>
+            <th className="px-3 py-2.5 font-semibold">Status</th>
+            <th className="px-3 py-2.5 text-right font-semibold">Replies</th>
+            <th className="w-32 px-3 py-2.5 font-semibold">14 days</th>
+            <th className="px-3 py-2.5 font-semibold">Last reply</th>
+            <th className="w-10 px-3 py-2.5" aria-label="Actions" />
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-(--line)">
+          {forms.map((f) => (
+            <tr key={f.id} className="group hover:bg-(--paper)">
+              <td className="px-3 py-2">
+                <button onClick={() => onPin(f)} aria-label={f.pinned ? 'Unpin' : 'Pin to top'} className={cn('grid size-7 place-items-center rounded-md hover:bg-white', f.pinned ? 'text-(--accent)' : 'text-(--ink-3) opacity-0 group-hover:opacity-100 focus-visible:opacity-100')}>
+                  <Pin className={cn('size-3.5', f.pinned && 'fill-current')} />
+                </button>
+              </td>
+              <td className="max-w-[280px] px-3 py-2">
+                <Link href={`/admin/forms/${f.id}`} className="block truncate font-semibold hover:text-(--accent)">
+                  {f.title || 'Untitled'}
+                </Link>
+                <span className="block truncate font-mono text-[11.5px] text-(--ink-3)">/{f.slug}</span>
+              </td>
+              <td className="px-3 py-2 text-(--ink-2)">{environmentMeta(f.theme?.environment).label}</td>
+              <td className="px-3 py-2">
+                <span className="flex items-center gap-1.5">
+                  <StatusBadge status={f.status} />
+                  {f.hasUnpublishedChanges && f.status === 'published' && <span className="size-2 rounded-full bg-[#d9a520]" title="Unpublished edits" />}
+                </span>
+              </td>
+              <td className="px-3 py-2 text-right font-semibold tabular-nums">{fmtNum(f.responseCount)}</td>
+              <td className="px-3 py-2">
+                <Spark values={f.spark} color={f.theme?.sealColor || '#8e1b1b'} />
+              </td>
+              <td className="px-3 py-2 text-(--ink-2)">{f.lastResponseAt ? fmtAgo(f.lastResponseAt) : '—'}</td>
+              <td className="px-3 py-2">
+                <Menu trigger={(p) => <IconButton icon={MoreHorizontal} label="More actions" size="sm" {...p} />}>
+                  {(close) => (
+                    <>
+                      <MenuItem icon={PenSquare} href={`/admin/forms/${f.id}`}>Edit</MenuItem>
+                      <MenuItem icon={Inbox} href={`/admin/forms/${f.id}/responses`}>Responses</MenuItem>
+                      <MenuItem icon={BarChart3} href={`/admin/forms/${f.id}/analytics`}>Analytics</MenuItem>
+                      <MenuItem icon={CopyPlus} onClick={() => { close(); onDuplicate(f); }}>Duplicate</MenuItem>
+                      <div className="my-1 h-px bg-(--line)" />
+                      <MenuItem icon={Trash2} danger onClick={() => { close(); onDelete(f); }}>Delete</MenuItem>
+                    </>
+                  )}
+                </Menu>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Card>
+  );
+}
+
+/** the newest replies across every letter */
+function LatestReplies({ data }: { data: OverviewData | null }) {
+  const items = data?.recent?.slice(0, 6) ?? [];
+  if (!items.length) return null;
+  return (
+    <section aria-label="Latest replies">
+      <div className="mb-2 flex items-center gap-2">
+        <Inbox className="size-4 text-(--accent)" aria-hidden />
+        <h2 className="text-[13px] font-semibold text-(--ink-2)">Latest replies</h2>
+      </div>
+      <div className="fgl-scroll -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+        {items.map((r) => {
+          const first = Object.values(r.answers ?? {}).find((v) => typeof v === 'string' && v.trim().length > 0) as string | undefined;
+          const where = [r.meta?.city, r.meta?.country].filter(Boolean).join(', ');
+          return (
+            <Link
+              key={r.id}
+              href={`/admin/forms/${r.formId}/responses?r=${r.id}`}
+              className="w-60 shrink-0 rounded-xl border border-(--line) bg-white p-3 transition-shadow hover:shadow-[0_10px_24px_-14px_rgba(60,40,20,.35)]"
+            >
+              <p className="truncate text-[12px] font-semibold text-(--ink-2)">{r.formTitle || 'A letter'}</p>
+              <p className="mt-1 line-clamp-2 min-h-[2.5em] font-display text-[15px] leading-snug text-(--ink)">{first ? `“${first}”` : 'A new reply'}</p>
+              <p className="mt-1.5 truncate text-[11.5px] text-(--ink-3)">
+                {fmtAgo(r.createdAt)}
+                {where ? ` · ${where}` : ''}
+              </p>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
   );
 }

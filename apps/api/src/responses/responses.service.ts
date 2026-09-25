@@ -13,7 +13,7 @@ import { and, asc, count, desc, eq, gte, inArray, lt, sql, type SQL } from 'driz
 import { z } from 'zod';
 import { toCsv } from '../common/csv';
 import { DbService } from '../db/db.service';
-import { responses } from '../db/schema';
+import { events, responses } from '../db/schema';
 import { FormsService } from '../forms/forms.service';
 import { toFormResponse } from '../forms/serialize';
 
@@ -92,6 +92,20 @@ export class ResponsesService {
       .orderBy(desc(responses.createdAt))
       .limit(100_000);
     return rows.map(toFormResponse);
+  }
+
+  /** what this respondent did before replying: the tracked events of their session */
+  async journey(rid: string): Promise<Array<{ type: string; page: number | null; at: string }>> {
+    const [r] = await this.db.select().from(responses).where(eq(responses.id, rid)).limit(1);
+    if (!r) throw new NotFoundException('Response not found');
+    if (!r.sessionId) return [];
+    const rows = await this.db
+      .select({ type: events.type, page: events.page, at: events.createdAt })
+      .from(events)
+      .where(and(eq(events.formId, r.formId), eq(events.sessionId, r.sessionId)))
+      .orderBy(events.createdAt)
+      .limit(200);
+    return rows.map((e) => ({ type: e.type, page: e.page, at: e.at.toISOString() }));
   }
 
   async update(rid: string, patch: z.infer<typeof PatchResponseBody>): Promise<FormResponse> {

@@ -24,7 +24,7 @@ function Panel({ title, description, children }: { title: string; description?: 
   );
 }
 
-export function DesignTab() {
+export function DesignTab({ livePreview = false }: { livePreview?: boolean }) {
   const form = useEditor((s) => s.form);
   const setTheme = useEditor((s) => s.setTheme);
   const [fontRole, setFontRole] = useState<'titleFont' | 'bodyFont' | 'labelFont'>('titleFont');
@@ -34,7 +34,7 @@ export function DesignTab() {
 
   return (
     <div className="fgl-scroll min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <div className={cn('mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6', !livePreview && 'lg:grid-cols-[minmax(0,1fr)_340px]')}>
         <div className="order-2 space-y-5 lg:order-1">
           <Panel title="World" description="Where the letter is found. Each world has its own opening, loading scenes, sounds and send-off.">
             <div role="radiogroup" aria-label="Environment" className="grid gap-3 sm:grid-cols-2">
@@ -235,9 +235,9 @@ export function DesignTab() {
           </Panel>
         </div>
 
-        <div className="order-1 lg:order-2">
+        <div className={cn('order-1 lg:order-2', livePreview && 'lg:hidden')}>
           <div className="lg:sticky lg:top-4">
-            <p className="mb-2 text-[11px] font-semibold tracking-[0.08em] text-(--ink-3) uppercase">Live preview</p>
+            <p className="mb-2 text-[11px] font-semibold tracking-[0.08em] text-(--ink-3) uppercase">Quick look</p>
             <ThemePreview theme={t} title={form.title} />
           </div>
         </div>

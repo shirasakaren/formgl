@@ -28,6 +28,11 @@ export class ResponsesController {
     return this.responses.bulkDelete(id, body.ids);
   }
 
+  @Get('responses/:rid/journey')
+  journey(@UuidParam('rid') rid: string) {
+    return this.responses.journey(rid);
+  }
+
   @Patch('responses/:rid')
   update(@UuidParam('rid') rid: string, @Body(new ZodPipe(PatchResponseBody)) body: z.infer<typeof PatchResponseBody>) {
     return this.responses.update(rid, body);

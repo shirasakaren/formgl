@@ -123,6 +123,7 @@ export const api = {
     update: (rid: string, patch: Partial<Pick<FormResponse, 'starred' | 'tags' | 'note' | 'answers'>>) =>
       request<FormResponse>(`/admin/responses/${rid}`, { method: 'PATCH', ...json(patch) }),
     remove: (rid: string) => request<{ ok: true }>(`/admin/responses/${rid}`, { method: 'DELETE' }),
+    journey: (rid: string) => request<Array<{ type: string; page: number | null; at: string }>>(`/admin/responses/${rid}/journey`),
     bulkDelete: (formId: string, ids: string[]) =>
       request<{ deleted: number }>(`/admin/forms/${formId}/responses/bulk-delete`, { method: 'POST', ...json({ ids }) }),
   },

@@ -66,6 +66,9 @@ export function ResponsesView({ formId }: { formId: string }) {
       .then(([f, r]) => {
         setForm(f);
         setResponses(r);
+        // deep link: /responses?r=<id> opens that reply (from notifications, webhooks, the dashboard)
+        const rid = new URLSearchParams(window.location.search).get('r');
+        if (rid && r.some((x) => x.id === rid)) setOpenId(rid);
       })
       .catch((e) => setError(errorMessage(e)));
   }, [formId]);
