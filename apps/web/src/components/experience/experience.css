@@ -418,8 +418,8 @@
 .fgl-fallback-env .seal {
   position: absolute;
   left: 50%;
-  top: 58%;
-  width: 18%;
+  top: 50%;
+  width: 16%;
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   border-radius: 50%;
@@ -434,8 +434,8 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 18%;
-  font-size: clamp(26px, 6vw, 40px);
+  bottom: 17%;
+  font-size: clamp(22px, 5.4vw, 36px);
 }
 .fgl-fallback-env .subtitle {
   position: absolute;

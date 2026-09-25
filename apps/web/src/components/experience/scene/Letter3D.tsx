@@ -100,8 +100,6 @@ export function Letter3D({ assets }: { assets: SceneAssets }) {
     const a = Math.PI * (1 - u) * 0.995;
     const k = 7 * Math.sin(Math.PI * u);
     res.top.apply(a, k, 0.0007 * (1 - u) + 0.0002);
-    // once unfolded the page's centre is the fold; shift so the sheet is centred
-    g.children[0].position.y = u * (LH / 4) * 0.0; // keep fold at origin (target accounts for it)
     g.visible = anim.letterVisible > 0.5;
   });
 

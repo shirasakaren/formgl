@@ -43,12 +43,12 @@ export function Lighting({ preset, assets, quality }: { preset: LightPreset; ass
 
   const debug = typeof window !== 'undefined' && window.location.search.includes('dbg=dapple');
   const debugSun = typeof window !== 'undefined' && window.location.search.includes('dbg=sun');
-  let acc = 0;
+  const acc = useRef(0);
   useFrame(({ gl, clock }, dt) => {
     // the canopy mask runs at ~30fps — plenty for swaying leaves
-    acc += dt;
-    if (acc < 1 / 32) return;
-    acc = 0;
+    acc.current += dt;
+    if (acc.current < 1 / 32) return;
+    acc.current = 0;
     dapple.update(gl, clock.elapsedTime, anim.wind);
     if (debug) (window as unknown as { __dapple?: (w?: 'target' | 'blur') => string }).__dapple = (w) => dapple.dump(gl, w);
   });
