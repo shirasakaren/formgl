@@ -1473,3 +1473,181 @@
 .fgl-v-kite .tail { animation: fgl-tail 0.8s ease-in-out infinite alternate; transform-origin: 0 30px; }
 @keyframes fgl-kite { 0%, 100% { transform: rotate(-10deg) translate(0, 0); } 50% { transform: rotate(12deg) translate(8px, -8px); } }
 @keyframes fgl-tail { from { rotate: -8deg; } to { rotate: 8deg; } }
+
+/* ═════════════════ the letter, written on the 3D sheet ═════════════════
+   The DOM page is laid out at a fixed size and pinned onto the 3D paper with a
+   per-frame matrix3d (see PaperProjector). The paper itself is the WebGL sheet, so
+   the page is transparent and its ink multiplies into the lit paper. */
+.fgl-embed {
+  --fgl-ink: #2b2320;
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+.fgl-embed.no-blend { mix-blend-mode: normal; }
+.fgl-embed .fgl-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.2);
+}
+.fgl-embedded {
+  position: fixed;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  display: flex;
+  flex-direction: column;
+  color: var(--fgl-ink);
+  font-family: var(--fgl-font-body);
+  background: transparent;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+.fgl-embed.is-shown .fgl-embedded { pointer-events: auto; }
+.fgl-embed.is-sending .fgl-embedded { pointer-events: none; }
+.fgl-embed-scroll {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--fgl-ink) 22%, transparent) transparent;
+}
+.fgl-embedded.has-more .fgl-embed-scroll {
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 64px), transparent);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 64px), transparent);
+}
+.fgl-embedded .fgl-sheet-inner {
+  padding: 40px 38px 18px 58px;
+  min-height: 100%;
+}
+.fgl-embedded .fgl-sheet-inner.ruling-lined::before { left: 30px; }
+.fgl-embedded .fgl-cover { margin: -40px -38px 24px -58px; border-radius: 2px 2px 0 0; }
+.fgl-embedded .fgl-title { font-size: 34px; }
+.fgl-embedded .fgl-letter-head { margin-bottom: 22px; }
+.fgl-embedded .fgl-fields { gap: 10px 20px; }
+.fgl-embedded .fgl-nav {
+  flex: 0 0 auto;
+  margin: 0 30px;
+  padding: 12px 0 20px;
+}
+.fgl-embedded .fgl-btn { min-height: 44px; }
+.fgl-more {
+  position: absolute;
+  left: 50%;
+  bottom: 86px;
+  transform: translate(-50%, 6px);
+  opacity: 0;
+  pointer-events: none;
+  border: 0;
+  background: transparent;
+  color: var(--fgl-ink);
+  font: italic 500 15px/1 var(--fgl-font-body);
+  cursor: pointer;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.fgl-more span { display: inline-block; animation: fgl-bob 1.6s ease-in-out infinite; }
+.fgl-embedded.has-more .fgl-more { opacity: 0.7; pointer-events: auto; transform: translate(-50%, 0); }
+@keyframes fgl-bob { 50% { transform: translateY(3px); } }
+
+/* ── every field is a row you can see, reach and fill ── */
+.fgl-marker, .fgl-nudge { display: none; }
+.fgl-embedded .fgl-field {
+  position: relative;
+  padding: 12px 14px 14px;
+  margin: 0 -14px;
+  border-radius: 12px;
+  cursor: text;
+  transition: background-color 0.35s ease, box-shadow 0.35s ease;
+}
+.fgl-embedded .fgl-field:hover { background-color: color-mix(in srgb, var(--fgl-highlight) 12%, transparent); }
+/* the row you are writing in is washed with a highlighter */
+.fgl-embedded .fgl-field:focus-within {
+  background-color: color-mix(in srgb, var(--fgl-highlight) 42%, transparent);
+  box-shadow: inset 3px 0 0 var(--fgl-accent);
+}
+.fgl-embedded .fgl-field.has-error { background-color: rgba(200, 60, 50, 0.08); box-shadow: inset 3px 0 0 #b33a33; }
+/* margin numbers: become a nib while writing, a tick once answered */
+.fgl-embedded .fgl-field:not([class*='t-heading']):not([class*='t-paragraph']):not([class*='t-divider']):not([class*='t-image']):not([class*='t-video']):not([class*='t-statement']) > .fgl-marker { display: flex; }
+.fgl-embedded .fgl-marker {
+  position: absolute;
+  left: -30px;
+  top: 14px;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--fgl-ink) 30%, transparent);
+  color: color-mix(in srgb, var(--fgl-ink) 65%, transparent);
+  font: 600 12px/1 'Inter', system-ui, sans-serif;
+  transition: all 0.35s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.fgl-embedded .fgl-marker .tick { position: absolute; width: 15px; height: 15px; stroke: currentColor; stroke-dasharray: 24; stroke-dashoffset: 24; transition: stroke-dashoffset 0.45s ease 0.05s; }
+.fgl-embedded .fgl-field.is-filled > .fgl-marker { border-color: var(--fgl-accent); background: var(--fgl-accent); color: #fff; }
+.fgl-embedded .fgl-field.is-filled > .fgl-marker .n { opacity: 0; }
+.fgl-embedded .fgl-field.is-filled > .fgl-marker .tick { stroke-dashoffset: 0; }
+.fgl-embedded .fgl-field:focus-within > .fgl-marker { transform: scale(1.15); border-color: var(--fgl-accent); color: var(--fgl-accent); background: transparent; }
+.fgl-embedded .fgl-field:focus-within > .fgl-marker .n { opacity: 1; }
+.fgl-embedded .fgl-field:focus-within > .fgl-marker .tick { stroke-dashoffset: 24; }
+.fgl-embedded .fgl-field.has-error > .fgl-marker { border-color: #b33a33; color: #b33a33; background: transparent; }
+/* required: a small note rather than a lone asterisk */
+.fgl-embedded .fgl-req { font-size: 0; }
+.fgl-embedded .fgl-req::after {
+  content: 'required';
+  font: italic 500 13px/1 var(--fgl-font-body);
+  color: color-mix(in srgb, var(--fgl-accent) 85%, var(--fgl-ink));
+  opacity: 0.8;
+  margin-left: 4px;
+}
+/* a pencilled nudge toward the field to fill next (only while nothing has focus) */
+.fgl-embedded .fgl-nudge {
+  position: absolute;
+  right: 12px;
+  bottom: 3px;
+  align-items: center;
+  gap: 4px;
+  font: italic 500 13px/1 var(--fgl-font-body);
+  color: var(--fgl-accent);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  pointer-events: none;
+}
+.fgl-embedded .fgl-nudge svg { width: 30px; height: 12px; stroke: currentColor; transform: scaleX(-1); }
+.fgl-embedded .fgl-field.is-next > .fgl-nudge { display: inline-flex; }
+.fgl-embedded .fgl-field.is-next { padding-bottom: 24px; }
+.fgl-embedded:not(:has(.fgl-field :focus)) .fgl-field.is-next > .fgl-nudge { opacity: 0.85; transform: none; animation: fgl-nudge 2.4s ease-in-out 1.2s infinite; }
+@keyframes fgl-nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-5px); } }
+/* inputs read as lines on the page, clearly there to be written on */
+.fgl-embedded .fgl-input,
+.fgl-embedded textarea.fgl-input { background-color: transparent; }
+.fgl-embedded.input-underline .fgl-input { border-bottom-width: 2px; border-bottom-color: color-mix(in srgb, var(--fgl-ink) 32%, transparent); }
+.fgl-embedded.input-underline .fgl-field:hover .fgl-input { border-bottom-color: color-mix(in srgb, var(--fgl-accent) 60%, transparent); }
+.fgl-embedded.input-boxed .fgl-input,
+.fgl-embedded.input-soft .fgl-input { background-color: rgba(255, 255, 255, 0.35); border-color: color-mix(in srgb, var(--fgl-ink) 28%, transparent); }
+.fgl-embedded:not(:has(.fgl-field :focus)) .fgl-field.is-next .fgl-input {
+  background-image: linear-gradient(90deg, transparent, color-mix(in srgb, var(--fgl-accent) 55%, transparent), transparent);
+  background-size: 40% 2px;
+  background-repeat: no-repeat;
+  animation: fgl-scan 2.6s ease-in-out 1.2s infinite;
+}
+@keyframes fgl-scan { 0% { background-position: -40% 100%; } 100% { background-position: 140% 100%; } }
+.fgl-embedded .fgl-input::placeholder { color: color-mix(in srgb, var(--fgl-ink) 45%, transparent); }
+.fgl-embedded .fgl-error { text-decoration: underline wavy color-mix(in srgb, #b33a33 50%, transparent); text-underline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) {
+  .fgl-embedded .fgl-nudge, .fgl-embedded .fgl-field.is-next .fgl-input, .fgl-more span { animation: none !important; }
+}
+
+.fgl-embedded .fgl-nav { flex-wrap: nowrap !important; }
+.fgl-embedded .fgl-nav .fgl-pages { order: 0 !important; width: auto !important; margin: 0 !important; }
+.fgl-embedded .fgl-nav .fgl-btn { flex: 0 0 auto !important; width: auto !important; }

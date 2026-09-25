@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { Check } from 'lucide-react';
-import { FONT_FAMILIES, type FontKey, type FormTheme, type LetterRuling, type LoaderStyle, type PageTransition, type PaperKind, type TimeOfDay } from '@formgl/shared';
+import { ENVIRONMENTS, FONT_FAMILIES, type EnvironmentKey, type FontKey, type FormTheme, type LetterRuling, type LoaderStyle, type PageTransition, type PaperKind, type TimeOfDay } from '@formgl/shared';
 import { useEditor } from '@/lib/admin/editor-store';
 import { cn } from '@/lib/admin/utils';
 import { Card, ColorField, Field, Input, Segmented, Select, ToggleRow } from '../ui';
@@ -36,7 +36,51 @@ export function DesignTab() {
     <div className="fgl-scroll min-h-0 flex-1 overflow-y-auto">
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="order-2 space-y-5 lg:order-1">
-          <Panel title="Scene" description="The park bench, light and atmosphere around the letter.">
+          <Panel title="World" description="Where the letter is found. Each world has its own opening, loading scenes, sounds and send-off.">
+            <div role="radiogroup" aria-label="Environment" className="grid gap-3 sm:grid-cols-2">
+              {ENVIRONMENTS.map((env) => {
+                const on = (t.environment ?? 'park') === env.key;
+                return (
+                  <button
+                    key={env.key}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => set({ environment: env.key as EnvironmentKey })}
+                    className={cn('group overflow-hidden rounded-2xl border bg-white text-left transition-all', on ? 'border-(--accent) ring-2 ring-(--accent)/20' : 'border-(--line) hover:border-(--line-2)')}
+                  >
+                    <span className="relative block h-20" style={{ background: env.preview }}>
+                      <span className="absolute bottom-2 left-3 rounded-full bg-white/85 px-2 py-0.5 text-[11px] font-medium text-(--ink-2)">{env.vessel}</span>
+                      {on && <Check className="absolute top-2 right-2 size-5 rounded-full bg-white p-0.5 text-(--accent)" />}
+                    </span>
+                    <span className="block px-3 pt-2 pb-3">
+                      <span className="block font-display text-[17px] font-semibold">{env.label}</span>
+                      <span className="block text-[12.5px] text-(--ink-2)">{env.tagline}</span>
+                      <span className="mt-1.5 block text-[12px] leading-snug text-(--ink-3) line-clamp-3">{env.description}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {(() => {
+              const env = ENVIRONMENTS.find((e) => e.key === (t.environment ?? 'park'))!;
+              const matches = Object.entries(env.suggest).every(([k, v]) => (t as unknown as Record<string, string>)[k]?.toLowerCase() === v.toLowerCase());
+              return matches ? null : (
+                <button type="button" onClick={() => set({ ...env.suggest })} className="inline-flex items-center gap-2 rounded-full border border-(--line) bg-white px-3 py-1.5 text-[13px] font-medium hover:border-(--line-2)">
+                  <span className="flex -space-x-1">
+                    {Object.values(env.suggest).map((c, i) => (
+                      <span key={i} className="size-4 rounded-full border border-white" style={{ background: c }} />
+                    ))}
+                  </span>
+                  Use this world’s colours
+                </button>
+              );
+            })()}
+            <Field label="Opening hint" hint={`Shown over the ${ENVIRONMENTS.find((e) => e.key === (t.environment ?? 'park'))!.vessel.toLowerCase()} — leave empty for the world’s own`}>
+              {(id) => <Input id={id} value={t.openHint === 'Tap to open' ? '' : (t.openHint ?? '')} onChange={(e) => set({ openHint: e.target.value })} placeholder={ENVIRONMENTS.find((e) => e.key === (t.environment ?? 'park'))!.hint} />}
+            </Field>
+          </Panel>
+          <Panel title="Scene" description="Light and atmosphere around the letter.">
             <div role="radiogroup" aria-label="Time of day" className="grid grid-cols-3 gap-2 sm:grid-cols-5">
               {(Object.keys(SKY) as TimeOfDay[]).map((k) => {
                 const [a, b, label] = SKY[k];

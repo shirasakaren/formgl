@@ -88,7 +88,7 @@ export const anim = {
   /** global time multiplier for wind */
   wind: 0.45,
   /** environment specific channels (cork, wave, ribbon, balloons…) */
-  fx: {} as Record<string, number>,
+  fx: { flip: 0, shake: 0, blank: 0, reply: 0 } as Record<string, number>,
   /** pointer in NDC (-1..1) smoothed */
   px: 0,
   py: 0,

@@ -8,6 +8,7 @@ import { DandelionReveal } from './loader/DandelionReveal';
 import { EnvelopeHint } from './EnvelopeHint';
 import { Controls } from './Controls';
 import { LetterOverlay } from './letter/LetterOverlay';
+import { sceneRefs } from './scene/refs';
 import { ThankYou } from './letter/ThankYou';
 import { Fallback } from './Fallback';
 import { killTimeline } from './timeline';
@@ -217,6 +218,16 @@ export function Experience({ form, demo = false, preview = false }: { form: Publ
       sfx.chime();
     });
   }, [set, form.slug]);
+
+  // QA hook: lets automated checks play the send animation without filling the form
+  useEffect(() => {
+    if (!debug) return;
+    (window as unknown as { __fglSend?: () => void }).__fglSend = () => {
+      sceneRefs.replyFace = sceneRefs.makeReplyFace?.(['What should I call you? — Ren', 'How is your day going? — Wonderful', 'Which seasons feel like home? — Autumn']) ?? null;
+      anim.fx.reply = sceneRefs.replyFace ? 1 : 0;
+      onSubmitted();
+    };
+  }, [debug, onSubmitted]);
 
   /* ── abandon tracking ── */
   useEffect(() => {

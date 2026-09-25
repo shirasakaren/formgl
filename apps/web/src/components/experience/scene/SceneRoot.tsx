@@ -11,6 +11,7 @@ import { CameraRig } from './CameraRig';
 import { WindClock } from './Ground';
 import { Letter3D } from './Letter3D';
 import { RevealPass } from './RevealPass';
+import { PaperProjector } from './PaperProjector';
 
 function ReadySignal({ onReady }: { onReady: () => void }) {
   const { gl, scene, camera } = useThree();
@@ -70,6 +71,7 @@ function World(props: WorldProps) {
       <CameraRig sway={t.cameraSway} reducedMotion={reduced} />
       <Env {...props} />
       <Letter3D assets={props.assets} style={cfg.letterStyle} ribbonColor={t.accentColor} />
+      <PaperProjector />
     </>
   );
 }
@@ -100,7 +102,8 @@ export default function SceneRoot({ onReady, onOpen, reveal }: { onReady: () => 
     const t = setTimeout(() => setCalm(true), 1400);
     return () => clearTimeout(t);
   }, [phase]);
-  const effDpr = calm ? Math.max(0.6, dpr * 0.6) : dpr;
+  // the paper itself stays on screen under the writing, so only ease off a little
+  const effDpr = calm ? Math.max(0.75, dpr * 0.85) : dpr;
 
   useEffect(() => {
     let alive = true;

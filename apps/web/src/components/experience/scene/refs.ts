@@ -81,6 +81,16 @@ export const sceneRefs = {
   cam: parkCamConfig(),
   /** world pose of the letter while it is still in its vessel (written by the vessel each frame) */
   letterSource: null as null | ((out: { p: THREE.Vector3; q: THREE.Quaternion }, t: number) => void),
+  /** the 3D letter itself (so props like a balloon can hang on to it) */
+  letterGroup: null as THREE.Group | null,
+  /** the DOM sheet projected onto the 3D letter while reading */
+  paperEl: null as HTMLElement | null,
+  /** layout size (css px) of that DOM sheet */
+  paperSize: { w: 560, h: 792 },
+  /** texture of the written reply (shown on the sheet while it is sent) */
+  replyFace: null as THREE.Texture | null,
+  /** paints a reply face from answer lines (set by the 3D letter, which owns the paper) */
+  makeReplyFace: null as null | ((lines: string[]) => THREE.Texture),
   /** world point the depth of field focuses on */
   focus: new THREE.Vector3(0.05, 0.45, 0.04),
   /** distance camera → focus, updated each frame */

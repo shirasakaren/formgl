@@ -215,11 +215,10 @@ function stripeTexture(colors: string[], size = 512) {
 }
 
 function cloudPuff(size = 256) {
-  // soft, lumpy cloud billboard: overlapping blurred discs (alpha)
+  // soft, lumpy cloud billboard: overlapping radial discs (alpha) — no canvas filter, it is very slow on some GPUs
   const c = makeCanvas(size, size);
   const g = ctx2d(c);
   const r = mulberry32(5);
-  g.filter = 'blur(10px)';
   for (let i = 0; i < 26; i++) {
     const a = r() * Math.PI * 2;
     const d = Math.pow(r(), 0.7) * size * 0.26;

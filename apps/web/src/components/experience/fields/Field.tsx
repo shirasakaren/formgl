@@ -51,11 +51,28 @@ interface Props {
   demo: boolean;
   onChange: (id: string, v: AnswerValue) => void;
   onEnter?: () => void;
+  /** a gentle nudge toward the field to fill next */
+  hint?: 'start' | 'next';
 }
 
-function FieldImpl({ field, value, error, index, animation, slug, demo, onChange, onEnter }: Props) {
+function isFilled(v: AnswerValue | undefined): boolean {
+  if (v === undefined || v === null || v === '' || v === false) return false;
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === 'object') return Object.values(v as Record<string, unknown>).some((x) => x !== '' && x !== undefined && x !== null);
+  return true;
+}
+
+/** clicking anywhere on a field's row puts the caret in it */
+function focusRow(e: React.MouseEvent<HTMLDivElement>) {
+  const t = e.target as HTMLElement;
+  if (t.closest('input, textarea, select, button, a, label, canvas, [role="slider"], [contenteditable]')) return;
+  e.currentTarget.querySelector<HTMLElement>('input:not([type=hidden]), textarea, select, button, [tabindex="0"]')?.focus();
+}
+
+function FieldImpl({ field, value, error, index, animation, slug, demo, onChange, onEnter, hint }: Props) {
   const anim = field.animation ?? animation;
-  const cls = `fgl-field anim-${anim} w-${field.width ?? 'full'} t-${field.type}${error ? ' has-error' : ''}`;
+  const filled = isFilled(value);
+  const cls = `fgl-field anim-${anim} w-${field.width ?? 'full'} t-${field.type}${error ? ' has-error' : ''}${filled ? ' is-filled' : ''}${hint ? ` is-next hint-${hint}` : ''}${field.required ? ' is-required' : ''}`;
   const style = { ['--i' as string]: index } as React.CSSProperties;
   if (isContentBlock(field.type)) {
     return (
@@ -73,7 +90,21 @@ function FieldImpl({ field, value, error, index, animation, slug, demo, onChange
   const isGroup = ['multiple_choice', 'checkboxes', 'multiselect', 'yes_no', 'rating', 'scale', 'nps', 'ranking', 'matrix', 'color'].includes(field.type);
   const Label = isGroup ? 'p' : 'label';
   return (
-    <div className={cls} style={style} data-field={field.id}>
+    <div className={cls} style={style} data-field={field.id} onClick={focusRow}>
+      <span className="fgl-marker" aria-hidden>
+        <span className="n">{index + 1}</span>
+        <svg className="tick" viewBox="0 0 24 24">
+          <path d="M5 12.5 L10 17 L19.5 6.5" fill="none" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+      {hint && (
+        <span className="fgl-nudge" aria-hidden>
+          {hint === 'start' ? 'Start here' : 'Next'}
+          <svg viewBox="0 0 40 16">
+            <path d="M2 10 C 12 2, 24 14, 36 6 M30 3 L36 6 L31 11" fill="none" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      )}
       {field.type !== 'consent' || field.label ? (
         <Label className="fgl-label" {...(isGroup ? { id: `${inputId}-label` } : { htmlFor: inputId })}>
           <span className="fgl-label-text">{field.label}</span>

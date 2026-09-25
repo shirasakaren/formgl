@@ -303,7 +303,10 @@ class SoundEngine {
     }
   }
 
-  private burner() {
+  /** performance.now() of the last burner blast (the sky scene flares its flame with it) */
+  lastBurner = -1e9;
+  burner() {
+    this.lastBurner = performance.now();
     const ctx = this.ctx;
     if (!ctx || !this.ambience) return;
     const t = ctx.currentTime;

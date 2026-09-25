@@ -144,7 +144,7 @@ export function CameraRig({ sway = true, reducedMotion = false }: { sway?: boole
 
     /* ── focus for depth of field ── */
     const f = sceneRefs.focus;
-    if (c < 1.5) f.lerpVectors(v.heroT, v.closeT, smooth(clamp(c)));
+    if (c < 1.5) f.lerpVectors(C.subject, v.closeT, smooth(clamp(c)));
     else f.copy(lt.pos);
     if (anim.intro > 0) f.lerp(v.introT, smooth(clamp(anim.intro)) * 0.6);
     sceneRefs.focusDistance = cam.position.distanceTo(f);

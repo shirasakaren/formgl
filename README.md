@@ -75,9 +75,25 @@ paper fibre, gravel, bark, leaves, the wax emboss and the liner pattern are all 
 | **Scene** | A cast-iron and wood bench. Moving *komorebi* light: a live leaf-canopy mask projected by the sun (a spotlight `map` plus soft shadows). Swaying grass and meadow flowers, billboard foliage, a hero tree, dandelions, dust motes, falling leaves, butterflies, light shafts and bokeh. Depth of field, bloom, AgX tone mapping, AO and grain. |
 | **Envelope** | A paper envelope with a real flap geometry that bends. The title is handwritten in the theme's font. The wax seal is embossed with the admin's **logo**, or a monogram. |
 | **Opening** | Tap: the envelope lifts and turns toward you. The seal trembles, **cracks in two** and throws wax crumbs onto the bench. The flap curls open to show a botanical liner. The folded letter slides out, rises into the light and **unfolds**, and the camera brings it close to read. |
-| **Letter** | The 3D sheet crossfades into an accessible DOM letter at the same position. It has paper texture, leaf shadows drifting across it, lined, dotted or grid ruling, a greeting, cover image or video, intro text and a sign-off. |
-| **Pages** | "Fields per page" (plus manual page breaks) splits the letter into sheets. Sheets turn with *flip*, *slide*, *fold*, *stack* or *fade*. Fields appear with *ink*, *typewriter*, *rise*, *blur* or *fade* animations. |
+| **Letter** | The questions are written **on the 3D sheet itself**. The real, accessible DOM form is laid out at a fixed page size and pinned onto the paper every frame with a CSS `matrix3d` homography of the sheet's projected corners (`scene/PaperProjector.tsx`), so it tilts, breathes, catches the scene's light and shadows (its ink is multiplied into the lit paper) and turns with it. Inputs are native, so keyboards, IME, autofill and screen readers all work. |
+| **Filling in** | Each field is a numbered row in the margin. The row you're writing in gets a highlighter wash and an accent rule, answered rows get an inked tick, and a pencilled *Start here / Next* note (with a moving underline) points at the next empty field. Required fields say so in words. Clicking anywhere on a row puts the caret in it. Errors show as wavy red ink and the sheet shakes. A "more below" cue appears when a page runs past the bottom of the sheet. |
+| **Pages** | "Fields per page" (plus manual page breaks) splits the letter into sheets. The 3D sheet swings edge-on, the next page is written and it swings back (*fade* just crossfades). Fields appear with *ink*, *typewriter*, *rise*, *blur* or *fade* animations. Without WebGL the letter is a flat paper page with the classic *flip*, *slide*, *fold*, *stack* transitions. |
 | **Send** | The letter folds back into the envelope and the flap closes. A fresh seal is stamped on, and the envelope flies off into the trees. A thank-you card follows, with falling petals and an optional redirect. |
+
+**Worlds.** Admins pick one of four environments in *Design → World*. Each has its own loading vignettes and
+quotes, reveal transition, soundscape, 3D scene, opening and send-off. Every world is a separate lazy chunk, and
+only its textures are painted.
+
+| World | Vessel | Opening | Send-off |
+| --- | --- | --- | --- |
+| **The Park Bench** | Wax-sealed envelope on a bench under a tree | The seal cracks, the flap curls open, the letter unfolds | Folded back, resealed, flies into the trees |
+| **Message in a Bottle** | A corked bottle at the waterline of a morning beach | A wave washes in, the bottle is lifted, the cork twists out and the scroll slides from the neck, slips its ribbon and unrolls | The scroll goes back in, the cork is pushed home, the sea carries it to the horizon |
+| **The Writing Desk** | A ribbon-tied letter on a desk by an open window with sheer curtains | A breeze billows the curtains, the silk bow unties, the pressed violet drifts aside, the letter lifts and opens | The reply folds itself into a paper plane and glides out of the window |
+| **Above the Clouds** | A scroll carried by party balloons beside your hot-air balloon basket | The balloons drift over, you catch the string, let them go and the scroll unrolls | The reply is rolled and tied, a new balloon blows up and carries it off toward the sun |
+
+Reveal transitions: dandelion seeds (park), a wave of sea foam (seaside), parting curtains (desk) and parting clouds
+(sky). Soundscapes: wind and birds; waves and gulls; a ticking clock, far birds and curtains; high wind, chimes and
+the burner.
 
 **Themes.** Five times of day (morning, noon, golden hour, dusk, overcast) change the sun, sky, fog, foliage and
 bokeh. Admins also choose the colours, paper type, fonts, particles, wind strength and camera sway.
@@ -99,7 +115,8 @@ The pixel ratio is capped. Force a tier with `?quality=low|medium|high`.
 - `prefers-reduced-motion` gets a faster, calmer version.
 - Devices without WebGL get an illustrated 2D envelope.
 
-**QA helpers.** `?fgl=idle` skips the intro and `?fgl=letter` opens the envelope straight away. Adding either
+**QA helpers.** `?fgl=idle` skips the intro and `?fgl=letter` opens the envelope straight away. On the demo page
+`?env=park|seaside|atelier|skies` switches worlds. Adding either
 also keeps animations running in real time on slow software renderers.
 
 ### Field types
