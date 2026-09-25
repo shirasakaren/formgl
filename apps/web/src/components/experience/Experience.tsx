@@ -236,13 +236,15 @@ export function Experience({ form, demo = false, preview = false }: { form: Publ
         Skip to the questions
       </a>
       <h1 className="sr-only">{form.title}</h1>
-      {mounted && webgl && <SceneRoot onReady={onSceneReady} onOpen={open} />}
+      {mounted && webgl && (
+        <SceneRoot onReady={onSceneReady} onOpen={open} reveal={{ run: revealRun, done: revealDone, onDone: onRevealDone, color: form.theme.loaderColor }} />
+      )}
       {mounted && !webgl && <Fallback onOpen={open} />}
       {mounted && webgl && (phase === 'idle' || phase === 'revealing') && <EnvelopeHint onOpen={open} />}
       {showLetter && <LetterOverlay pages={pages} onSubmitted={onSubmitted} visible={phase !== 'opening'} />}
       {phase === 'sent' && <ThankYou />}
       <Controls />
-      {!revealDone && <DandelionReveal color={form.theme.loaderColor} run={revealRun} reduced={reduced || !webgl} onDone={onRevealDone} />}
+      {!revealDone && !webgl && <DandelionReveal color={form.theme.loaderColor} run={revealRun} reduced onDone={onRevealDone} />}
       {!revealRun && <Loader hidden={false} />}
     </main>
   );

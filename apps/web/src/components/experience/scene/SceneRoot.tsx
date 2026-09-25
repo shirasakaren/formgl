@@ -17,6 +17,7 @@ import { Lighting } from './Lighting';
 import { Dandelions, ForegroundBranch, HeroTree } from './Nature';
 import { Butterflies, Dust, FallingLeaves, FloatingSeeds, LightShafts } from './Particles';
 import { PRESETS } from './presets';
+import { RevealPass } from './RevealPass';
 
 function ReadySignal({ onReady }: { onReady: () => void }) {
   const { gl, scene, camera } = useThree();
@@ -85,7 +86,15 @@ function World({ form, assets, quality, onOpen }: { form: PublicForm; assets: Sc
   );
 }
 
-export default function SceneRoot({ onReady, onOpen }: { onReady: () => void; onOpen: () => void }) {
+interface RevealState {
+  run: boolean;
+  done: boolean;
+  onDone: () => void;
+  color: string;
+}
+
+export default function SceneRoot({ onReady, onOpen, reveal }: { onReady: () => void; onOpen: () => void; reveal: RevealState }) {
+  const reduced = useExperience((s) => s.reducedMotion);
   const form = useExperience((s) => s.form)!;
   const quality = useExperience((s) => s.quality);
   const set = useExperience((s) => s.set);
@@ -163,6 +172,7 @@ export default function SceneRoot({ onReady, onOpen }: { onReady: () => void; on
           <>
             <World form={form} assets={assets} quality={quality} onOpen={onOpen} />
             <ReadySignal onReady={onReady} />
+            {!reveal.done && <RevealPass color={reveal.color} run={reveal.run} reduced={reduced} renderScene={quality === 'low'} onDone={reveal.onDone} />}
           </>
         )}
       </PerformanceMonitor>
