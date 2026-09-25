@@ -46,11 +46,17 @@ export function DandelionReveal({ color, run, reduced, onDone }: { color: string
     }
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, premultipliedAlpha: false });
+      renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     } catch {
       done.current();
       return;
     }
+    const onLost = (e: Event) => {
+      e.preventDefault();
+      console.warn('[formgl] reveal context lost');
+      done.current();
+    };
+    canvas.addEventListener('webglcontextlost', onLost);
     const w = window.innerWidth;
     const h = window.innerHeight;
     const dpr = Math.min(window.devicePixelRatio, 2);
@@ -162,13 +168,15 @@ export function DandelionReveal({ color, run, reduced, onDone }: { color: string
 
     let raf = 0;
     const start = performance.now();
-    const DURATION = 3400;
+    const qa = Number(new URLSearchParams(window.location.search).get('revealMs'));
+    const DURATION = qa > 0 ? qa : 3400;
     const tick = () => {
       const t = (performance.now() - start) / DURATION;
       uniforms.uTime.value = t * 3.4;
       // ease: slow start, confident middle, long tail for the last seeds
       const e = t < 1 ? 1 - Math.pow(1 - t, 1.6) : 1;
       uniforms.uP.value = -0.05 + e * 1.12;
+      (window as unknown as { __revealP?: number }).__revealP = uniforms.uP.value;
       renderer.render(scene, cam);
       if (t < 1.45) raf = requestAnimationFrame(tick);
       else {
@@ -178,6 +186,7 @@ export function DandelionReveal({ color, run, reduced, onDone }: { color: string
     raf = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(raf);
+      canvas.removeEventListener('webglcontextlost', onLost);
       renderer.dispose();
       geo.dispose();
       tex.dispose();
